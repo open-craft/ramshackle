@@ -1,25 +1,32 @@
-<%page expression_filter="h"/>
-<%inherit file="base.html" />
-<%!
-from django.utils.translation import ugettext as _
-
-from openedx.core.djangolib.js_utils import (
-    dump_js_escaped_json, js_escaped_string
-)
-from openedx.core.djangolib.markup import HTML, Text
-%>
-
-<%block name="title">Ramshackle</%block>
-<%block name="bodyclass">ramshackle</%block>
-
-<%block name="header_extras">
-
-</%block>
-
-<%block name="content">
-    <div class="wrapper-content wrapper">
-        <section class="content">
-            <h1>Welcome to Ramshackle!</h1>
-        </section>
+<div class="content-wrapper container-fluid">
+    <div id="ramshackle-root">
+        <h1>Loading Ramshackle...</h1>
     </div>
-</%block>
+</div>
+
+<script>
+requirejs.config({
+    paths: {
+        'react': 'https://unpkg.com/react@16/umd/react.development',
+        'react-dom': 'https://unpkg.com/react-dom@16/umd/react-dom.development',
+        'jsx-direct': 'https://unpkg.com/jsxdirect@0.0.12/jsxdirect',
+    }
+});
+requirejs(["react", "react-dom"], (React, ReactDOM) => {
+    window.React = React;
+    requirejs(["jsx-direct"], () => {
+        jsx.compile();
+        ReactDOM.render(new Ramshackle().render(), document.getElementById("ramshackle-root"));
+    });
+});
+</script>
+
+<script type="text/jsx">
+    class Ramshackle extends React.Component {
+        render() {
+            return (
+                <h1>Welcome to Ramshackle!</h1>
+            );
+        }
+    }    
+</script>

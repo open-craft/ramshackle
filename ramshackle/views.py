@@ -3,11 +3,35 @@ Views for Ramshackle.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from edxmako.shortcuts import render_to_response
+from django.template.loader import render_to_string
+from web_fragments.fragment import Fragment
+
+from openedx.core.djangoapps.plugin_api.views import EdxFragmentView
 
 
-def render_ramshackle_spa(request):
+class RamshackleSpaView(EdxFragmentView):
     """
     Render the Ramshackle single page app.
     """
-    return render_to_response('ramshackle.html', {})
+    def create_base_standalone_context(self, request, fragment, **kwargs):
+        """
+        Override context for the base template that we use
+        """
+        return {
+            'uses_pattern_library': False,
+            'uses_bootstrap': True,
+            # 'disable_accordion': True,
+            # 'allow_iframing': True,
+            # 'disable_header': True,
+            # 'disable_footer': True,
+            # 'disable_window_wrap': True,
+        }
+
+    def render_to_fragment(self, request):
+        """
+        Render the Ramshackle single page app.
+        """
+        context = {
+        }
+        html = render_to_string('ramshackle.html', context)
+        return Fragment(html)
