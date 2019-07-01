@@ -3,7 +3,9 @@ Views for Ramshackle.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+
 from django.template.loader import render_to_string
+import pkg_resources
 from web_fragments.fragment import Fragment
 
 from openedx.core.djangoapps.plugin_api.views import EdxFragmentView
@@ -34,4 +36,6 @@ class RamshackleSpaView(EdxFragmentView):
         context = {
         }
         html = render_to_string('ramshackle.html', context)
-        return Fragment(html)
+        fragment = Fragment(html)
+        fragment.add_javascript(pkg_resources.resource_string('ramshackle', 'js-dist/ramshackle.js'))
+        return fragment

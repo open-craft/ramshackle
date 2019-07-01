@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "outFile": "./ramshackle/js-dist/ramshackle.js",
+        "sourceMap": false,
+        "noImplicitAny": false,
+        "module": "AMD",
+        "moduleResolution": "node",
+        "target": "es6",
+        "jsx": "react"
+    },
+    "include": [
+        "ramshackle/js-src/**/*",
+    ]
+}

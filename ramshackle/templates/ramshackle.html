@@ -3,30 +3,12 @@
         <h1>Loading Ramshackle...</h1>
     </div>
 </div>
-
 <script>
-requirejs.config({
-    paths: {
-        'react': 'https://unpkg.com/react@16/umd/react.development',
-        'react-dom': 'https://unpkg.com/react-dom@16/umd/react-dom.development',
-        'jsx-direct': 'https://unpkg.com/jsxdirect@0.0.12/jsxdirect',
-    }
-});
-requirejs(["react", "react-dom"], (React, ReactDOM) => {
-    window.React = React;
-    requirejs(["jsx-direct"], () => {
-        jsx.compile();
-        ReactDOM.render(new Ramshackle().render(), document.getElementById("ramshackle-root"));
-    });
-});
-</script>
-
-<script type="text/jsx">
-    class Ramshackle extends React.Component {
-        render() {
-            return (
-                <h1>Welcome to Ramshackle!</h1>
-            );
+    requirejs.config({
+        paths: {
+            'react': 'https://unpkg.com/react@16/umd/react.development',
+            'react-dom': 'https://unpkg.com/react-dom@16/umd/react-dom.development',
         }
-    }    
+    });
+    require(['ramshackle'], () => {});
 </script>
