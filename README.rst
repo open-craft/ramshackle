@@ -20,10 +20,14 @@ On Open edX Devstack:
     make studio-shell
     pip install -e /edx/src/ramshackle/
 
+3. Access Ramshackle at http://localhost:18010/ramshackle/
+
 Frontend Development
 --------------------
 
-Run `npm install` and then `make js-watch` if you want to edit the frontend code.
+If you want to edit the frontend code:
+
+Within the Studio container, run ``npm install`` and then ``make js-watch``.
 
 Test Instructions
 -----------------
