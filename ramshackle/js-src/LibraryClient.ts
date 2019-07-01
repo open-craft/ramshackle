@@ -17,6 +17,25 @@ export interface LibraryMetadata {
 export type LibraryCreateData = Pick<LibraryMetadata, 'slug'|'title'|'description'>&{collection_uuid: string};
 
 /**
+ * Metadata about a content library XBlock
+ */
+export interface LibraryBlockMetadata {
+    id: string;
+    def_key: string;
+    block_type: string;
+    display_name: string;
+    has_unpublished_changes: boolean;
+}
+/**
+ * Data required to create an XBlock in a content library
+ */
+export interface LibraryBlockCreate {
+    block_type: string;
+    slug: string;
+}
+
+
+/**
  * A simple API client for the Open edX content libraries API
  */
 class LibraryClient {
@@ -55,6 +74,10 @@ class LibraryClient {
 
     async createLibrary(data: LibraryCreateData): Promise<LibraryMetadata> {
         return this._call(`/`, {method: 'POST', data: data});
+    }
+
+    async getLibraryBlocks(id: string): Promise<LibraryBlockMetadata[]> {
+        return this._call(`/${id}/blocks/`);
     }
 }
 export const libClient = new LibraryClient();
