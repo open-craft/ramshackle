@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Route, Link, Switch } from "react-router-dom";
 import { LibraryWrapper } from './Library';
 import { LibraryAddForm } from './LibraryAdd';
 import { LibraryListWrapper } from './LibraryList';
+import { BlockPageWrapper } from "./BlockPage";
 
 class Ramshackle extends React.Component {
     render() {
@@ -14,6 +15,8 @@ class Ramshackle extends React.Component {
                     <Route path="/" exact component={LibraryListWrapper}/>
                     <Route path="/add/" exact component={LibraryAddForm}/>
                     <Route path="/lib/:id/" exact component={LibraryWrapper}/>
+                    <Route path="/lib/:lib_id/blocks/:id/edit" exact component={BlockPageWrapper}/>
+                    <Route path="/lib/:lib_id/blocks/:id" exact component={BlockPageWrapper}/>
                     <Route component={() => ( <p>Not found.</p> )}/>
                 </Switch>
 

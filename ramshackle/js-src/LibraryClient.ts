@@ -79,6 +79,18 @@ class LibraryClient {
     async getLibraryBlocks(id: string): Promise<LibraryBlockMetadata[]> {
         return this._call(`/${id}/blocks/`);
     }
+
+    async getLibraryBlock(id: string): Promise<LibraryBlockMetadata> {
+        // Temporary implementation:
+        const libraryId = 'lib:' + id.split(':')[1];
+        const blocks = await this.getLibraryBlocks(libraryId);
+        for (const block of blocks) {
+            if (block.id === id) {
+                return block;
+            }
+        }
+        throw new Error("Block not found.");
+    }
 }
 export const libClient = new LibraryClient();
 

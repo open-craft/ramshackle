@@ -28,8 +28,8 @@ export class Library extends React.PureComponent<LibraryMetadata&{blocks: Librar
                                     }
                                 </div>
                                 <div className="card-footer">
-                                    <Link to="/" className="btn btn-sm btn-outline-primary mr-2">View</Link>
-                                    <Link to="/" className="btn btn-sm btn-outline-secondary mr-2">Edit</Link>
+                                    <Link to={`/lib/${this.props.id}/blocks/${block.id}`} className="btn btn-sm btn-outline-primary mr-2">View</Link>
+                                    <Link to={`/lib/${this.props.id}/blocks/${block.id}/edit`} className="btn btn-sm btn-outline-secondary mr-2">Edit</Link>
                                     {
                                         block.has_unpublished_changes ?
                                             <Link to="/" className="btn btn-sm btn-outline-success mr-2">Publish</Link>

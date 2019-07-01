@@ -54,6 +54,19 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
                 return this._call(`/${id}/blocks/`);
             });
         }
+        getLibraryBlock(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                // Temporary implementation:
+                const libraryId = 'lib:' + id.split(':')[1];
+                const blocks = yield this.getLibraryBlocks(libraryId);
+                for (const block of blocks) {
+                    if (block.id === id) {
+                        return block;
+                    }
+                }
+                throw new Error("Block not found.");
+            });
+        }
     }
     exports.libClient = new LibraryClient();
     /**
@@ -95,7 +108,58 @@ define("LoadingWrapper", ["require", "exports", "react"], function (require, exp
     }
     exports.LoadingWrapper = LoadingWrapper;
 });
-define("Library", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_1, LibraryClient_1, LoadingWrapper_1) {
+define("BlockPage", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_1, LibraryClient_1, LoadingWrapper_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * Main page that has different tabs for viewing and editing an XBlock.
+     */
+    class BlockPage extends React.PureComponent {
+        render() {
+            const baseHref = `/lib/${this.props.match.params.lib_id}/blocks/${this.props.match.params.id}`;
+            return React.createElement(React.Fragment, null,
+                React.createElement("h1", null, this.props.display_name),
+                React.createElement("div", { className: "card" },
+                    React.createElement("div", { className: "card-header" },
+                        React.createElement("ul", { className: "nav nav-tabs card-header-tabs" },
+                            React.createElement("li", { className: "nav-item" },
+                                React.createElement(react_router_dom_1.NavLink, { exact: true, to: `${baseHref}`, className: 'nav-link', activeClassName: "active" }, "View")),
+                            React.createElement("li", { className: "nav-item" },
+                                React.createElement(react_router_dom_1.NavLink, { to: `${baseHref}/edit`, className: 'nav-link', activeClassName: "active" }, "Edit")))),
+                    React.createElement("div", { className: "card-body" },
+                        React.createElement(react_router_dom_1.Switch, null,
+                            React.createElement(react_router_dom_1.Route, { exact: true, path: `${baseHref}` }, "View"),
+                            React.createElement(react_router_dom_1.Route, { exact: true, path: `${baseHref}/edit` }, "Edit")))));
+        }
+    }
+    exports.BlockPage = BlockPage;
+    class BlockPageWrapper extends React.PureComponent {
+        constructor(props) {
+            super(props);
+            this.state = {
+                status: 0 /* Loading */,
+            };
+        }
+        componentDidMount() {
+            return __awaiter(this, void 0, void 0, function* () {
+                try {
+                    const data = yield LibraryClient_1.libClient.getLibraryBlock(this.props.match.params.id);
+                    this.setState({ data, status: 1 /* Ready */ });
+                }
+                catch (err) {
+                    console.error(err);
+                    this.setState({ status: 2 /* Error */ });
+                }
+            });
+        }
+        render() {
+            return React.createElement(LoadingWrapper_1.LoadingWrapper, { status: this.state.status },
+                React.createElement(BlockPage, Object.assign({}, this.state.data, { match: this.props.match })));
+        }
+    }
+    exports.BlockPageWrapper = BlockPageWrapper;
+});
+define("Library", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_2, LibraryClient_2, LoadingWrapper_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class Library extends React.PureComponent {
@@ -119,10 +183,10 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
                                 React.createElement("small", { className: "text-muted" }, block.id)),
                             block.has_unpublished_changes ? React.createElement("p", { className: "badge badge-info" }, "Unpublished Changes") : null),
                         React.createElement("div", { className: "card-footer" },
-                            React.createElement(react_router_dom_1.Link, { to: "/", className: "btn btn-sm btn-outline-primary mr-2" }, "View"),
-                            React.createElement(react_router_dom_1.Link, { to: "/", className: "btn btn-sm btn-outline-secondary mr-2" }, "Edit"),
+                            React.createElement(react_router_dom_2.Link, { to: `/lib/${this.props.id}/blocks/${block.id}`, className: "btn btn-sm btn-outline-primary mr-2" }, "View"),
+                            React.createElement(react_router_dom_2.Link, { to: `/lib/${this.props.id}/blocks/${block.id}/edit`, className: "btn btn-sm btn-outline-secondary mr-2" }, "Edit"),
                             block.has_unpublished_changes ?
-                                React.createElement(react_router_dom_1.Link, { to: "/", className: "btn btn-sm btn-outline-success mr-2" }, "Publish")
+                                React.createElement(react_router_dom_2.Link, { to: "/", className: "btn btn-sm btn-outline-success mr-2" }, "Publish")
                                 : null)))))));
         }
     }
@@ -138,8 +202,8 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
             return __awaiter(this, void 0, void 0, function* () {
                 try {
                     const [data, blocks] = yield Promise.all([
-                        LibraryClient_1.libClient.getLibrary(this.props.match.params.id),
-                        LibraryClient_1.libClient.getLibraryBlocks(this.props.match.params.id),
+                        LibraryClient_2.libClient.getLibrary(this.props.match.params.id),
+                        LibraryClient_2.libClient.getLibraryBlocks(this.props.match.params.id),
                     ]);
                     this.setState({ data, blocks, status: 1 /* Ready */ });
                 }
@@ -150,13 +214,13 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
             });
         }
         render() {
-            return React.createElement(LoadingWrapper_1.LoadingWrapper, { status: this.state.status },
+            return React.createElement(LoadingWrapper_2.LoadingWrapper, { status: this.state.status },
                 React.createElement(Library, Object.assign({}, this.state.data, { blocks: this.state.blocks })));
         }
     }
     exports.LibraryWrapper = LibraryWrapper;
 });
-define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "LibraryClient"], function (require, exports, React, react_router_dom_2, LibraryClient_2) {
+define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "LibraryClient"], function (require, exports, React, react_router_dom_3, LibraryClient_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class LibraryAddForm extends React.PureComponent {
@@ -169,7 +233,7 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
             this.handleChangeCollectionUUID = (event) => { this.setState({ collection_uuid: event.target.value }); };
             this.handleSubmit = (event) => __awaiter(this, void 0, void 0, function* () {
                 event.preventDefault();
-                const newLibrary = yield LibraryClient_2.libClient.createLibrary(this.state);
+                const newLibrary = yield LibraryClient_3.libClient.createLibrary(this.state);
                 this.props.history.push(`/lib/${newLibrary.id}`);
             });
             this.state = {
@@ -200,7 +264,7 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
                             React.createElement("a", { href: "http://localhost:18250/api/v1/collections" }, "via the Blockstore API"),
                             ".")),
                     React.createElement("button", { type: "submit", disabled: !this.canSubmit, className: "btn btn-primary", onClick: this.handleSubmit }, "Submit"),
-                    React.createElement(react_router_dom_2.Link, { to: "/", className: "btn btn-secondary" }, "Cancel")));
+                    React.createElement(react_router_dom_3.Link, { to: "/", className: "btn btn-secondary" }, "Cancel")));
         }
         get canSubmit() {
             return this.state.slug && this.state.collection_uuid;
@@ -208,7 +272,7 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
     }
     exports.LibraryAddForm = LibraryAddForm;
 });
-define("LibraryList", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_3, LibraryClient_3, LoadingWrapper_2) {
+define("LibraryList", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_4, LibraryClient_4, LoadingWrapper_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class LibraryList extends React.PureComponent {
@@ -220,8 +284,8 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
                     this.props.libraries.length,
                     " content libraries:"),
                 React.createElement("ul", null, this.props.libraries.map(lib => (React.createElement("li", { key: lib.id },
-                    React.createElement(react_router_dom_3.Link, { to: `/lib/${lib.id}` }, lib.title))))),
-                React.createElement(react_router_dom_3.Link, { to: "/add/", className: "btn btn-primary" }, "Add New Library"));
+                    React.createElement(react_router_dom_4.Link, { to: `/lib/${lib.id}` }, lib.title))))),
+                React.createElement(react_router_dom_4.Link, { to: "/add/", className: "btn btn-primary" }, "Add New Library"));
         }
     }
     exports.LibraryList = LibraryList;
@@ -236,7 +300,7 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
         componentDidMount() {
             return __awaiter(this, void 0, void 0, function* () {
                 try {
-                    const libraryList = yield LibraryClient_3.libClient.listLibraries();
+                    const libraryList = yield LibraryClient_4.libClient.listLibraries();
                     this.setState({
                         libraryList,
                         status: 1 /* Ready */,
@@ -249,25 +313,27 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
             });
         }
         render() {
-            return React.createElement(LoadingWrapper_2.LoadingWrapper, { status: this.state.status },
+            return React.createElement(LoadingWrapper_3.LoadingWrapper, { status: this.state.status },
                 React.createElement(LibraryList, { libraries: this.state.libraryList }));
         }
     }
     exports.LibraryListWrapper = LibraryListWrapper;
 });
-define("ramshackle", ["require", "exports", "react", "react-dom", "react-router-dom", "Library", "LibraryAdd", "LibraryList"], function (require, exports, React, ReactDOM, react_router_dom_4, Library_1, LibraryAdd_1, LibraryList_1) {
+define("ramshackle", ["require", "exports", "react", "react-dom", "react-router-dom", "Library", "LibraryAdd", "LibraryList", "BlockPage"], function (require, exports, React, ReactDOM, react_router_dom_5, Library_1, LibraryAdd_1, LibraryList_1, BlockPage_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class Ramshackle extends React.Component {
         render() {
-            return (React.createElement(react_router_dom_4.BrowserRouter, { basename: "/ramshackle/" },
-                React.createElement(react_router_dom_4.Switch, null,
-                    React.createElement(react_router_dom_4.Route, { path: "/", exact: true, component: LibraryList_1.LibraryListWrapper }),
-                    React.createElement(react_router_dom_4.Route, { path: "/add/", exact: true, component: LibraryAdd_1.LibraryAddForm }),
-                    React.createElement(react_router_dom_4.Route, { path: "/lib/:id/", exact: true, component: Library_1.LibraryWrapper }),
-                    React.createElement(react_router_dom_4.Route, { component: () => (React.createElement("p", null, "Not found.")) })),
+            return (React.createElement(react_router_dom_5.BrowserRouter, { basename: "/ramshackle/" },
+                React.createElement(react_router_dom_5.Switch, null,
+                    React.createElement(react_router_dom_5.Route, { path: "/", exact: true, component: LibraryList_1.LibraryListWrapper }),
+                    React.createElement(react_router_dom_5.Route, { path: "/add/", exact: true, component: LibraryAdd_1.LibraryAddForm }),
+                    React.createElement(react_router_dom_5.Route, { path: "/lib/:id/", exact: true, component: Library_1.LibraryWrapper }),
+                    React.createElement(react_router_dom_5.Route, { path: "/lib/:lib_id/blocks/:id/edit", exact: true, component: BlockPage_1.BlockPageWrapper }),
+                    React.createElement(react_router_dom_5.Route, { path: "/lib/:lib_id/blocks/:id", exact: true, component: BlockPage_1.BlockPageWrapper }),
+                    React.createElement(react_router_dom_5.Route, { component: () => (React.createElement("p", null, "Not found.")) })),
                 React.createElement("footer", { style: { marginTop: "1em", borderTop: "1px solid #ddd" } },
-                    React.createElement(react_router_dom_4.Link, { to: "/" }, "All libraries"))));
+                    React.createElement(react_router_dom_5.Link, { to: "/" }, "All libraries"))));
         }
     }
     ReactDOM.render(React.createElement(Ramshackle, null), document.getElementById("ramshackle-root"));
