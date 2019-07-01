@@ -4,12 +4,17 @@
     </div>
 </div>
 <script>
-    requirejs.config({
-        paths: {
-            'react': 'https://unpkg.com/react@16/umd/react.development',
-            'react-dom': 'https://unpkg.com/react-dom@16/umd/react-dom.development',
-            'react-router-dom': 'https://unpkg.com/react-router-dom/umd/react-router-dom.min',
-        }
-    });
-    require(['ramshackle'], () => {});
+    (() => {
+        const myRequire = requirejs.config({
+            context: 'ramshackle', // Namespace these modules to not conflict with existing modules in edxapp
+            paths: {
+                'react': 'https://unpkg.com/react@16/umd/react.development',
+                'react-dom': 'https://unpkg.com/react-dom@16/umd/react-dom.development',
+                'react-router-dom': 'https://unpkg.com/react-router-dom@5/umd/react-router-dom.min',
+            },
+        });
+        // Our library's JS module has been injected in to the HTML via a fragment,
+        // so we just require() it to initialize and run it:
+        myRequire(['ramshackle'], () => {});
+    })();
 </script>
