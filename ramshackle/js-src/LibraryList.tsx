@@ -17,7 +17,7 @@ export class LibraryList extends React.PureComponent<{libraries: LibraryMetadata
                     </li>
                 ))}
             </ul>
-            <button className="btn btn-primary">Add New Library</button>
+            <Link to="/add/" className="btn btn-primary">Add New Library</Link>
         </>
     }
 }
