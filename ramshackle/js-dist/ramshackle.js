@@ -70,6 +70,49 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
     }
     exports.libClient = new LibraryClient();
     /**
+     * A simple API client for the Open edX XBlock API
+     */
+    class XBlockClient {
+        _call(url, args = {}) {
+            return __awaiter(this, void 0, void 0, function* () {
+                if (args.data) {
+                    args.body = JSON.stringify(args.data);
+                    delete args.data;
+                }
+                const combinedArgs = Object.assign({ method: 'GET', credentials: 'include', headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    } }, args);
+                const result = yield fetch(`/api/xblock/v2${url}`, combinedArgs);
+                if (result.status < 200 || result.status >= 300) {
+                    try {
+                        console.error(yield result.json());
+                    }
+                    catch (_a) { }
+                    throw new Error(result.statusText);
+                }
+                return yield result.json();
+            });
+        }
+        getMetadata(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return this._call(`/xblocks/${id}/`);
+            });
+        }
+        renderView(id, viewName) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return this._call(`/xblocks/${id}/view/${viewName}/`);
+            });
+        }
+        getHandlerUrl(id, handlerName) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const result = yield this._call(`/xblocks/${id}/handler_url/${handlerName}/`);
+                return result.handler_url;
+            });
+        }
+    }
+    exports.xblockClient = new XBlockClient();
+    /**
      * JS Cookie parser from Django docs
      * https://docs.djangoproject.com/en/2.2/ref/csrf/#acquiring-the-token-if-csrf-use-sessions-and-csrf-cookie-httponly-are-false
      * @param name Name of the cookie to get
@@ -108,7 +151,398 @@ define("LoadingWrapper", ["require", "exports", "react"], function (require, exp
     }
     exports.LoadingWrapper = LoadingWrapper;
 });
-define("BlockPage", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_1, LibraryClient_1, LoadingWrapper_1) {
+define("Block/wrap", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * Code to wrap an XBlock so that we can embed it in an IFrame
+     */
+    const LMS_BASE_URL = 'http://localhost:18000';
+    /**
+     * Given an XBlock's fragment data (HTML plus CSS and JS URLs), return the
+     * inner HTML that should go into an IFrame in order to display that XBlock
+     * and interact with the surrounding LabXchange UI and with the LMS.
+     * @param html The XBlock's HTML (Fragment.content)
+     * @param jsUrls A list of any JavaScript URLs the XBlock may require
+     * @param cssUrls A list of any CSS URLs the XBlock may require
+     */
+    function wrapBlockHtmlForIFrame(html, jsUrls, cssUrls) {
+        const jsTags = jsUrls.map((url) => `<script src="${url}"><\/script>`).join('\n');
+        const cssTags = cssUrls.map((url) => `<link rel="stylesheet" href="${url}">`).join('\n');
+        const lmsBaseUrl = LMS_BASE_URL;
+        const result = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <!-- Open links in a new tab, not this iframe -->
+            <base target="_blank">
+            <meta charset="UTF-8">
+            <!--
+                JS Compatibility hacks.
+                Note: ALL XBlocks should be re-written to fully provide their own JS dependencies.
+                Each of the following is a hack to work around broken XBlocks that make assumptions
+                about the presence of JS libraries in the global scope.
+
+                Over time as we fix the upstream XBlock code, we should remove libraries/hacks from here.
+            -->
+            <!-- gettext & XBlock JS i18n code -->
+            <script type="text/javascript" src="${lmsBaseUrl}/static/js/i18n/en/djangojs.js"><\/script>
+            <!-- Most XBlocks require jQuery: -->
+            <script src="https://code.jquery.com/jquery-2.2.4.min.js"><\/script>
+            <!-- The Video XBlock requires "ajaxWithPrefix" -->
+            <script type="text/javascript">
+                $.postWithPrefix = $.post;
+                $.getWithPrefix = $.get;
+                $.ajaxWithPrefix = $.ajax;
+            <\/script>
+            <!-- The Video XBlock requires "Slider" from jQuery-UI: -->
+            <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"><\/script>
+            <!-- The video XBlock depends on Underscore.JS -->
+            <script type="text/javascript" src="${lmsBaseUrl}/static/common/js/vendor/underscore.js"><\/script>
+            <!-- The video XBlock depends on jquery-cookie -->
+            <script type="text/javascript" src="${lmsBaseUrl}/static/js/vendor/jquery.cookie.js"><\/script>
+            <!-- The video XBlock has an undeclared dependency on edX HTML Utils -->
+            <script type="text/javascript" src="${lmsBaseUrl}/static/edx-ui-toolkit/js/utils/global-loader.js"><\/script>
+            <script type="text/javascript" src="${lmsBaseUrl}/static/edx-ui-toolkit/js/utils/html-utils.js"><\/script>
+            <!--The Video XBlock has an undeclared dependency on 'Logger' -->
+            <script>
+                window.Logger = { log: function() { } };
+            <\/script>
+            <!-- Builtin XBlock types depend on RequireJS -->
+            <script type="text/javascript" src="${lmsBaseUrl}/static/common/js/vendor/require.js"><\/script>
+            <script type="text/javascript" src="${lmsBaseUrl}/static/js/RequireJS-namespace-undefine.js"><\/script>
+            <script>
+                // The minimal RequireJS configuration required for common LMS building XBlock types to work:
+                (function (require, define) {
+                    require.config({
+                        baseUrl: "${lmsBaseUrl}/static/",
+                        paths: {
+                            draggabilly: 'js/vendor/draggabilly',
+                            hls: 'common/js/vendor/hls',
+                            moment: 'common/js/vendor/moment-with-locales',
+                        },
+                    });
+                    define('gettext', [], function() { return window.gettext; });
+                    define('jquery', [], function() { return window.jQuery; });
+                    define('jquery-migrate', [], function() { return window.jQuery; });
+                    define('underscore', [], function() { return window._; });
+                }).call(this, require || RequireJS.require, define || RequireJS.define);
+            <\/script>
+            <!-- The video XBlock (and perhaps others?) expect this global: -->
+            <script>
+            window.onTouchBasedDevice = function() { return navigator.userAgent.match(/iPhone|iPod|iPad|Android/i); };
+            <\/script>
+            <!-- At least one XBlock (drag and drop v2) expects Font Awesome -->
+            <link rel="stylesheet"
+                href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+            ${cssTags}
+        </head>
+        <body>
+            ${html}
+            ${jsTags}
+            <script>
+                window.addEventListener('load', (${blockFrameJS.toString()}));
+            <\/script>
+        </body>
+        </html>
+    `;
+        return result;
+    }
+    exports.wrapBlockHtmlForIFrame = wrapBlockHtmlForIFrame;
+    /**
+     * The JavaScript code which runs inside our IFrame and is responsible
+     * for communicating with the parent window.
+     *
+     * This cannot use any imported functions because it runs in the IFrame,
+     * not in our app webpack bundle.
+     */
+    function blockFrameJS() {
+        const CHILDREN_KEY = '_lx_xb_children';
+        const USAGE_ID_KEY = '_lx_xb_usage_id';
+        const HANDLER_URL = '_lx_xb_handler_url';
+        /**
+         * The JavaScript runtime for any XBlock in the IFrame
+         */
+        const runtime = {
+            /**
+             * An obscure and little-used API that retrieves a particular
+             * XBlock child using its 'data-name' attribute
+             * @param block The root DIV element of the XBlock calling this method
+             * @param childName The value of the 'data-name' attribute of the root
+             *    DIV element of the XBlock child in question.
+             */
+            childMap: (block, childName) => {
+                return runtime.children(block).find((child) => child.element.getAttribute('data-name') === childName);
+            },
+            children: (block) => {
+                return block[CHILDREN_KEY];
+            },
+            /**
+             * Get the URL for the specified handler. This method must be synchronous, so
+             * cannot make HTTP requests.
+             */
+            handlerUrl: (block, handlerName, suffix, query) => {
+                let url = block[HANDLER_URL].replace('handler_name', handlerName);
+                if (suffix) {
+                    url += `${suffix}/`;
+                }
+                if (query) {
+                    url += `?${query}`;
+                }
+                return url;
+            },
+        };
+        // Recursively initialize the JavaScript code of each XBlock:
+        function initializeXBlockAndChildren(element, callback) {
+            // The newer/pure/Blockstore runtime uses the 'data-usage' attribute, while the LMS uses 'data-usage-id'
+            const usageId = element.getAttribute('data-usage') || element.getAttribute('data-usage-id');
+            if (usageId !== null) {
+                element[USAGE_ID_KEY] = usageId;
+            }
+            else {
+                throw new Error('XBlock is missing a usage ID attribute on its root HTML node.');
+            }
+            const version = element.getAttribute('data-runtime-version');
+            if (version !== '1') {
+                throw new Error('Unsupported XBlock runtime version requirement.');
+            }
+            // Recursively initialize any children first:
+            // We need to find all div.xblock-v1 children, unless they're grandchilden
+            // So we build a list of all div.xblock-v1 descendants that aren't descendants
+            // of an already-found descendant:
+            const childNodesFound = [];
+            [].forEach.call(element.querySelectorAll('.xblock, .xblock-v1'), (childNode) => {
+                if (!childNodesFound.find((el) => el.contains(childNode))) {
+                    childNodesFound.push(childNode);
+                }
+            });
+            // This code is awkward because we can't use promises (IE11 etc.)
+            let childrenInitialized = -1;
+            function initNextChild() {
+                childrenInitialized++;
+                if (childrenInitialized < childNodesFound.length) {
+                    const childNode = childNodesFound[childrenInitialized];
+                    initializeXBlockAndChildren(childNode, initNextChild);
+                }
+                else {
+                    // All children are initialized:
+                    initializeXBlock(element, callback);
+                }
+            }
+            initNextChild();
+        }
+        /**
+         * Initialize an XBlock. This function should only be called by initializeXBlockAndChildren
+         * because it assumes that function has already run.
+         */
+        function initializeXBlock(element, callback) {
+            const usageId = element[USAGE_ID_KEY];
+            // Check if the XBlock has an initialization function:
+            const initFunctionName = element.getAttribute('data-init');
+            if (initFunctionName !== null) {
+                // Since this block has an init function, it may need to call handlers,
+                // so we first have to generate a secure handler URL for it:
+                postMessageToParent({ method: 'get_handler_url', usageId }, (handlerData) => {
+                    element[HANDLER_URL] = handlerData.handlerUrl;
+                    // Now proceed with initializing the block's JavaScript:
+                    const initFunction = window[initFunctionName];
+                    // Does the XBlock HTML contain arguments to pass to the initFunction?
+                    let data = {};
+                    [].forEach.call(element.children, (childNode) => {
+                        // The newer/pure/Blockstore runtime uses 'xblock_json_init_args'
+                        // while the LMS runtime uses 'xblock-json-init-args'.
+                        if (childNode.matches('script.xblock_json_init_args') ||
+                            childNode.matches('script.xblock-json-init-args')) {
+                            data = JSON.parse(childNode.textContent);
+                        }
+                    });
+                    const blockJS = new initFunction(runtime, element, data) || {};
+                    blockJS.element = element;
+                    callback(blockJS);
+                });
+            }
+            else {
+                const blockJS = { element };
+                callback(blockJS);
+            }
+        }
+        const uniqueKeyPrefix = `k${+Date.now()}-${Math.floor(Math.random() * 1e10)}-`;
+        let messageCount = 0;
+        /**
+         * A helper method for sending messages to the parent window of this IFrame
+         * and getting a reply, even when the IFrame is securely sandboxed.
+         * @param messageData The message to send. Must be an object, as we add a key/value pair to it.
+         * @param callback The callback to call when the parent window replies
+         */
+        function postMessageToParent(messageData, callback) {
+            const messageReplyKey = uniqueKeyPrefix + (messageCount++);
+            messageData.replyKey = messageReplyKey;
+            if (callback !== undefined) {
+                const handleResponse = (event) => {
+                    if (event.source === window.parent && event.data.replyKey === messageReplyKey) {
+                        callback(event.data);
+                        window.removeEventListener('message', handleResponse);
+                    }
+                };
+                window.addEventListener('message', handleResponse);
+            }
+            window.parent.postMessage(messageData, '*');
+        }
+        // Find the root XBlock node.
+        // The newer/pure/Blockstore runtime uses '.xblock-v1' while the LMS runtime uses '.xblock'.
+        const rootNode = document.querySelector('.xblock, .xblock-v1'); // will always return the first matching element
+        initializeXBlockAndChildren(rootNode, () => {
+            // When done, tell the parent window the size of this block:
+            postMessageToParent({
+                height: document.body.scrollHeight,
+                method: 'update_frame_height',
+            });
+            postMessageToParent({ method: 'init_done' });
+        });
+        let lastHeight = -1;
+        function checkFrameHeight() {
+            const newHeight = document.documentElement.scrollHeight;
+            if (newHeight !== lastHeight) {
+                postMessageToParent({ method: 'update_frame_height', height: newHeight });
+                lastHeight = newHeight;
+            }
+        }
+        // Check the size whenever the DOM changes:
+        new MutationObserver(checkFrameHeight).observe(document.body, { attributes: true, childList: true, subtree: true });
+        // And whenever the IFrame is resized
+        window.addEventListener('resize', checkFrameHeight);
+    }
+});
+define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingWrapper", "Block/wrap"], function (require, exports, React, LibraryClient_1, LoadingWrapper_1, wrap_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    // The xblock-bootstrap.html file must be hosted on a completely unique domain name.
+    // The domain below may be used for development but not production.
+    const SECURE_ORIGIN_XBLOCK_BOOTSTRAP_HTML_URL = 'https://d3749cj02gkez2.cloudfront.net/xblock-bootstrap.html';
+    /**
+     * React component that displays an XBlock in a sandboxed IFrame.
+     *
+     * The IFrame is resized responsively so that it fits the content height.
+     *
+     * We use an IFrame so that the XBlock code, including user-authored HTML,
+     * cannot access things like the user's cookies, nor can it make GET/POST
+     * requests as the user. However, it is allowed to call any XBlock handlers.
+     */
+    class Block extends React.Component {
+        constructor(props) {
+            super(props);
+            /**
+             * Handle any messages we receive from the XBlock Runtime code in the IFrame.
+             * See wrap.ts to see the code that sends these messages.
+             */
+            this.receivedWindowMessage = (event) => __awaiter(this, void 0, void 0, function* () {
+                if (this.iframeRef.current === null || event.source !== this.iframeRef.current.contentWindow) {
+                    return; // This is some other random message.
+                }
+                const method = event.data.method;
+                const frame = this.iframeRef.current.contentWindow;
+                const replyKey = event.data.replyKey;
+                const sendReply = (data) => __awaiter(this, void 0, void 0, function* () {
+                    frame.postMessage(Object.assign({}, data, { replyKey }), '*');
+                });
+                if (method === 'bootstrap') {
+                    sendReply({ initialHtml: this.state.initialHtml });
+                }
+                else if (method === 'get_handler_url') {
+                    sendReply({
+                        handlerUrl: yield this.getSecureHandlerUrl(event.data.usageId),
+                    });
+                }
+                else if (method === 'update_frame_height') {
+                    this.setState({ iFrameHeight: event.data.height });
+                }
+            });
+            this.iframeRef = React.createRef();
+            this.state = {
+                iFrameHeight: 400,
+                initialHtml: '',
+                loadingState: 0 /* Loading */,
+            };
+        }
+        /**
+         * Load the XBlock data from the LMS and then inject it into our IFrame.
+         */
+        componentDidMount() {
+            return __awaiter(this, void 0, void 0, function* () {
+                try {
+                    // First load the XBlock fragment data:
+                    const data = yield LibraryClient_1.xblockClient.renderView(this.props.usageKey, 'student_view');
+                    const urlResources = data.resources.filter((r) => r.kind === 'url');
+                    const html = wrap_1.wrapBlockHtmlForIFrame(data.content, urlResources.filter((r) => r.mimetype === 'application/javascript').map((r) => r.data), urlResources.filter((r) => r.mimetype === 'text/css').map((r) => r.data));
+                    // Prepare to receive messages from the IFrame.
+                    // Messages are the only way that the code in the IFrame can communicate
+                    // with the surrounding UI.
+                    window.addEventListener('message', this.receivedWindowMessage);
+                    // Load the XBlock HTML into the IFrame:
+                    this.setState({
+                        initialHtml: html,
+                        loadingState: 1 /* Ready */,
+                    });
+                }
+                catch (err) {
+                    console.error(err); // tslint:disable-line:no-console
+                    this.setState({ loadingState: 2 /* Error */ });
+                }
+            });
+        }
+        componentWillUnmount() {
+            window.removeEventListener('message', this.receivedWindowMessage);
+        }
+        render() {
+            return React.createElement(LoadingWrapper_1.LoadingWrapper, { status: this.state.loadingState },
+                React.createElement("div", { style: {
+                        height: `${this.state.iFrameHeight}px`,
+                        boxSizing: 'content-box',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        minHeight: '200px',
+                    } },
+                    React.createElement("iframe", { ref: this.iframeRef, src: SECURE_ORIGIN_XBLOCK_BOOTSTRAP_HTML_URL, style: {
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            width: '100%',
+                            height: '100%',
+                            minHeight: '200px',
+                            border: '0 none',
+                            backgroundColor: 'white',
+                        }, sandbox: [
+                            'allow-forms',
+                            'allow-modals',
+                            'allow-popups',
+                            'allow-popups-to-escape-sandbox',
+                            'allow-presentation',
+                            'allow-same-origin',
+                            // is served from a completely different domain name
+                            // e.g. labxchange-xblocks.net vs www.labxchange.org
+                            'allow-scripts',
+                            'allow-top-navigation-by-user-activation',
+                        ].join(' ') })));
+        }
+        /**
+         * Helper method which gets a "secure handler URL" from the LMS/Studio
+         * A "secure handler URL" is a URL that the XBlock runtime can use even from
+         * within its sandboxed IFrame. (The IFrame is considered a different origin,
+         * and normally, cross-origin handler requests would be blocked).
+         *
+         * @param uageKey The usage key of the XBlock whose handlers you want to call.
+         */
+        getSecureHandlerUrl(usageKey) {
+            return __awaiter(this, void 0, void 0, function* () {
+                // We request the URL of a fake handler called 'handler_name' and then
+                // substitute the name of the real handler later, without any further calls.
+                return yield LibraryClient_1.xblockClient.getHandlerUrl(usageKey, 'handler_name');
+            });
+        }
+    }
+    exports.Block = Block;
+});
+define("BlockPage", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper", "Block/Block"], function (require, exports, React, react_router_dom_1, LibraryClient_2, LoadingWrapper_2, Block_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -128,7 +562,8 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                                 React.createElement(react_router_dom_1.NavLink, { to: `${baseHref}/edit`, className: 'nav-link', activeClassName: "active" }, "Edit")))),
                     React.createElement("div", { className: "card-body" },
                         React.createElement(react_router_dom_1.Switch, null,
-                            React.createElement(react_router_dom_1.Route, { exact: true, path: `${baseHref}` }, "View"),
+                            React.createElement(react_router_dom_1.Route, { exact: true, path: `${baseHref}` },
+                                React.createElement(Block_1.Block, { usageKey: this.props.id })),
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${baseHref}/edit` }, "Edit")))));
         }
     }
@@ -143,7 +578,7 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
         componentDidMount() {
             return __awaiter(this, void 0, void 0, function* () {
                 try {
-                    const data = yield LibraryClient_1.libClient.getLibraryBlock(this.props.match.params.id);
+                    const data = yield LibraryClient_2.libClient.getLibraryBlock(this.props.match.params.id);
                     this.setState({ data, status: 1 /* Ready */ });
                 }
                 catch (err) {
@@ -153,13 +588,13 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
             });
         }
         render() {
-            return React.createElement(LoadingWrapper_1.LoadingWrapper, { status: this.state.status },
+            return React.createElement(LoadingWrapper_2.LoadingWrapper, { status: this.state.status },
                 React.createElement(BlockPage, Object.assign({}, this.state.data, { match: this.props.match })));
         }
     }
     exports.BlockPageWrapper = BlockPageWrapper;
 });
-define("Library", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_2, LibraryClient_2, LoadingWrapper_2) {
+define("Library", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_2, LibraryClient_3, LoadingWrapper_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class Library extends React.PureComponent {
@@ -202,8 +637,8 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
             return __awaiter(this, void 0, void 0, function* () {
                 try {
                     const [data, blocks] = yield Promise.all([
-                        LibraryClient_2.libClient.getLibrary(this.props.match.params.id),
-                        LibraryClient_2.libClient.getLibraryBlocks(this.props.match.params.id),
+                        LibraryClient_3.libClient.getLibrary(this.props.match.params.id),
+                        LibraryClient_3.libClient.getLibraryBlocks(this.props.match.params.id),
                     ]);
                     this.setState({ data, blocks, status: 1 /* Ready */ });
                 }
@@ -214,13 +649,13 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
             });
         }
         render() {
-            return React.createElement(LoadingWrapper_2.LoadingWrapper, { status: this.state.status },
+            return React.createElement(LoadingWrapper_3.LoadingWrapper, { status: this.state.status },
                 React.createElement(Library, Object.assign({}, this.state.data, { blocks: this.state.blocks })));
         }
     }
     exports.LibraryWrapper = LibraryWrapper;
 });
-define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "LibraryClient"], function (require, exports, React, react_router_dom_3, LibraryClient_3) {
+define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "LibraryClient"], function (require, exports, React, react_router_dom_3, LibraryClient_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class LibraryAddForm extends React.PureComponent {
@@ -233,7 +668,7 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
             this.handleChangeCollectionUUID = (event) => { this.setState({ collection_uuid: event.target.value }); };
             this.handleSubmit = (event) => __awaiter(this, void 0, void 0, function* () {
                 event.preventDefault();
-                const newLibrary = yield LibraryClient_3.libClient.createLibrary(this.state);
+                const newLibrary = yield LibraryClient_4.libClient.createLibrary(this.state);
                 this.props.history.push(`/lib/${newLibrary.id}`);
             });
             this.state = {
@@ -272,7 +707,7 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
     }
     exports.LibraryAddForm = LibraryAddForm;
 });
-define("LibraryList", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_4, LibraryClient_4, LoadingWrapper_3) {
+define("LibraryList", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_4, LibraryClient_5, LoadingWrapper_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class LibraryList extends React.PureComponent {
@@ -300,7 +735,7 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
         componentDidMount() {
             return __awaiter(this, void 0, void 0, function* () {
                 try {
-                    const libraryList = yield LibraryClient_4.libClient.listLibraries();
+                    const libraryList = yield LibraryClient_5.libClient.listLibraries();
                     this.setState({
                         libraryList,
                         status: 1 /* Ready */,
@@ -313,7 +748,7 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
             });
         }
         render() {
-            return React.createElement(LoadingWrapper_3.LoadingWrapper, { status: this.state.status },
+            return React.createElement(LoadingWrapper_4.LoadingWrapper, { status: this.state.status },
                 React.createElement(LibraryList, { libraries: this.state.libraryList }));
         }
     }

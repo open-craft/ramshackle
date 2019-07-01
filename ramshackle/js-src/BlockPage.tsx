@@ -3,6 +3,7 @@ import { match, Link, NavLink, Switch, Route } from "react-router-dom";
 
 import {libClient, LibraryMetadata, LibraryBlockMetadata} from './LibraryClient';
 import {LoadingStatus, LoadingWrapper} from './LoadingWrapper';
+import { Block } from "./Block/Block";
 
 
 type MatchProps = {match: match<{lib_id: string, id: string}>};
@@ -29,7 +30,7 @@ export class BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchP
                 <div className="card-body">
                     <Switch>
                         <Route exact path={`${baseHref}`}>
-                            View
+                            <Block usageKey={this.props.id} />
                         </Route>
                         <Route exact path={`${baseHref}/edit`}>
                             Edit
