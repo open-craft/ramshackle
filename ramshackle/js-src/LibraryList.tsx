@@ -1,25 +1,34 @@
 import * as React from "react";
+import { Link } from "react-router-dom";
 
-import {libClient} from './LibraryClient';
+import {libClient, LibraryMetadata} from './LibraryClient';
+import {LoadingStatus, LoadingWrapper} from './LoadingWrapper';
 
 
-export class LibraryList extends React.PureComponent<{libraries: any[]}> {
+export class LibraryList extends React.PureComponent<{libraries: LibraryMetadata[]}> {
     render() {
-        return <ul>
-            {this.props.libraries.map(lib => {
-                return <li key={lib.key}>{lib.title}</li>
-            })}
-        </ul>;
+        return <>
+            <h1>All Content Libraries</h1>
+            <p>There are {this.props.libraries.length} content libraries:</p>
+            <ul>
+                {this.props.libraries.map(lib => (
+                    <li key={lib.id}>
+                        <Link to={`/lib/${lib.id}`}>{lib.title}</Link>
+                    </li>
+                ))}
+            </ul>
+            <button className="btn btn-primary">Add New Library</button>
+        </>
     }
 }
 
 
-export class LibraryListWrapper extends React.PureComponent<any, {libraryList: any[]|null, loading: boolean}> {
+export class LibraryListWrapper extends React.PureComponent<any, {libraryList: LibraryMetadata[], status: LoadingStatus}> {
     constructor(props) {
         super(props);
         this.state = {
-            libraryList: null,
-            loading: true,
+            libraryList: [],
+            status: LoadingStatus.Loading,
         };
     }
     
@@ -28,21 +37,17 @@ export class LibraryListWrapper extends React.PureComponent<any, {libraryList: a
             const libraryList = await libClient.listLibraries();
             this.setState({
                 libraryList,
-                loading: false,
+                status: LoadingStatus.Ready,
             });
         } catch (err) {
             console.error(err);
-            this.setState({loading: false});
+            this.setState({status: LoadingStatus.Error});
         }
     }
 
     render() {
-        if (this.state.loading) {
-            return <p>Loading...</p>;
-        } else if (this.state.libraryList) {
-            return <LibraryList libraries={this.state.libraryList}/>;
-        } else {
-            return <p>Unable to load libraries</p>;
-        }
+        return <LoadingWrapper status={this.state.status}>
+            <LibraryList libraries={this.state.libraryList}/>
+        </LoadingWrapper>;
     }
 }

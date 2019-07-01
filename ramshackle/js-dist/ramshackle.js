@@ -31,17 +31,86 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
                 return this._call('/');
             });
         }
+        getLibrary(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return this._call(`/${id}/`);
+            });
+        }
     }
     exports.libClient = new LibraryClient();
 });
-define("LibraryList", ["require", "exports", "react", "LibraryClient"], function (require, exports, React, LibraryClient_1) {
+define("LoadingWrapper", ["require", "exports", "react"], function (require, exports, React) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    class LoadingWrapper extends React.PureComponent {
+        render() {
+            if (this.props.status === 1 /* Ready */) {
+                return this.props.children;
+            }
+            else if (this.props.status === 0 /* Loading */) {
+                return React.createElement("p", null, "Loading...");
+            }
+            else {
+                return React.createElement("p", null, "An error occurred");
+            }
+        }
+    }
+    exports.LoadingWrapper = LoadingWrapper;
+});
+define("Library", ["require", "exports", "react", "LibraryClient", "LoadingWrapper"], function (require, exports, React, LibraryClient_1, LoadingWrapper_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    class Library extends React.PureComponent {
+        render() {
+            return React.createElement(React.Fragment, null,
+                React.createElement("h1", null, this.props.title),
+                React.createElement("p", null,
+                    "This is a content library (key: ",
+                    this.props.id,
+                    ")."));
+        }
+    }
+    exports.Library = Library;
+    class LibraryWrapper extends React.PureComponent {
+        constructor(props) {
+            super(props);
+            this.state = {
+                status: 0 /* Loading */,
+            };
+        }
+        componentDidMount() {
+            return __awaiter(this, void 0, void 0, function* () {
+                try {
+                    const data = yield LibraryClient_1.libClient.getLibrary(this.props.match.params.id);
+                    this.setState({ data, status: 1 /* Ready */ });
+                }
+                catch (err) {
+                    console.error(err);
+                    this.setState({ status: 2 /* Error */ });
+                }
+            });
+        }
+        render() {
+            return React.createElement(LoadingWrapper_1.LoadingWrapper, { status: this.state.status },
+                React.createElement(Library, Object.assign({}, this.state.data)));
+        }
+    }
+    exports.LibraryWrapper = LibraryWrapper;
+});
+define("LibraryList", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_1, LibraryClient_2, LoadingWrapper_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class LibraryList extends React.PureComponent {
         render() {
-            return React.createElement("ul", null, this.props.libraries.map(lib => {
-                return React.createElement("li", { key: lib.key }, lib.title);
-            }));
+            return React.createElement(React.Fragment, null,
+                React.createElement("h1", null, "All Content Libraries"),
+                React.createElement("p", null,
+                    "There are ",
+                    this.props.libraries.length,
+                    " content libraries:"),
+                React.createElement("ul", null, this.props.libraries.map(lib => (React.createElement("li", { key: lib.id },
+                    React.createElement(react_router_dom_1.Link, { to: `/lib/${lib.id}` }, lib.title))))),
+                React.createElement("button", { className: "btn btn-primary" }, "Add New Library"));
         }
     }
     exports.LibraryList = LibraryList;
@@ -49,45 +118,42 @@ define("LibraryList", ["require", "exports", "react", "LibraryClient"], function
         constructor(props) {
             super(props);
             this.state = {
-                libraryList: null,
-                loading: true,
+                libraryList: [],
+                status: 0 /* Loading */,
             };
         }
         componentDidMount() {
             return __awaiter(this, void 0, void 0, function* () {
                 try {
-                    const libraryList = yield LibraryClient_1.libClient.listLibraries();
+                    const libraryList = yield LibraryClient_2.libClient.listLibraries();
                     this.setState({
                         libraryList,
-                        loading: false,
+                        status: 1 /* Ready */,
                     });
                 }
                 catch (err) {
                     console.error(err);
-                    this.setState({ loading: false });
+                    this.setState({ status: 2 /* Error */ });
                 }
             });
         }
         render() {
-            if (this.state.loading) {
-                return React.createElement("p", null, "Loading...");
-            }
-            else if (this.state.libraryList) {
-                return React.createElement(LibraryList, { libraries: this.state.libraryList });
-            }
-            else {
-                return React.createElement("p", null, "Unable to load libraries");
-            }
+            return React.createElement(LoadingWrapper_2.LoadingWrapper, { status: this.state.status },
+                React.createElement(LibraryList, { libraries: this.state.libraryList }));
         }
     }
     exports.LibraryListWrapper = LibraryListWrapper;
 });
-define("ramshackle", ["require", "exports", "react", "react-dom", "LibraryList"], function (require, exports, React, ReactDOM, LibraryList_1) {
+define("ramshackle", ["require", "exports", "react", "react-dom", "react-router-dom", "Library", "LibraryList"], function (require, exports, React, ReactDOM, react_router_dom_2, Library_1, LibraryList_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class Ramshackle extends React.Component {
         render() {
-            return (React.createElement(LibraryList_1.LibraryListWrapper, null));
+            return (React.createElement(react_router_dom_2.BrowserRouter, { basename: "/ramshackle/" },
+                React.createElement(react_router_dom_2.Route, { path: "/", exact: true, component: LibraryList_1.LibraryListWrapper }),
+                React.createElement(react_router_dom_2.Route, { path: "/lib/:id/", exact: true, component: Library_1.LibraryWrapper }),
+                React.createElement("footer", { style: { marginTop: "1em", borderTop: "1px solid #ddd" } },
+                    React.createElement(react_router_dom_2.Link, { to: "/" }, "All libraries"))));
         }
     }
     ReactDOM.render(React.createElement(Ramshackle, null), document.getElementById("ramshackle-root"));

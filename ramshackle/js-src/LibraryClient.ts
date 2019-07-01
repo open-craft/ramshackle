@@ -4,6 +4,18 @@ interface RequestArgs extends FetchOptions {
 }
 
 /**
+ * Metadata about a content library
+ */
+export interface LibraryMetadata {
+    id: string;
+    slug: string;
+    bundle_uuid: string;
+    title: string;
+    description: string;
+    version: number;
+}
+
+/**
  * A simple API client for the Open edX content libraries API
  */
 class LibraryClient {
@@ -25,8 +37,12 @@ class LibraryClient {
         return await result.json();
     }
 
-    async listLibraries() {
+    async listLibraries(): Promise<LibraryMetadata[]> {
         return this._call('/');
+    }
+
+    async getLibrary(id: string): Promise<LibraryMetadata> {
+        return this._call(`/${id}/`);
     }
 }
 export const libClient = new LibraryClient();

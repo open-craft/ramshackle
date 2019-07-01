@@ -9,6 +9,6 @@ from . import views
 
 urlpatterns = [
     url(r'^ramshackle/', include([
-        url(r'^$', views.RamshackleSpaView.as_view()),
+        url(r'.*', views.RamshackleSpaView.as_view()),
     ])),
 ]
