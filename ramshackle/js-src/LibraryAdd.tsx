@@ -49,7 +49,6 @@ export class LibraryAddForm extends React.PureComponent<RouteComponentProps, Lib
     handleSubmit = async (event: React.MouseEvent) => {
         event.preventDefault();
         const newLibrary = await libClient.createLibrary(this.state);
-        console.log(newLibrary);
         this.props.history.push(`/lib/${newLibrary.id}`);
     }
 

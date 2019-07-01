@@ -144,7 +144,6 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
             this.handleSubmit = (event) => __awaiter(this, void 0, void 0, function* () {
                 event.preventDefault();
                 const newLibrary = yield LibraryClient_2.libClient.createLibrary(this.state);
-                console.log(newLibrary);
                 this.props.history.push(`/lib/${newLibrary.id}`);
             });
             this.state = {
