@@ -4,6 +4,7 @@ import { match, NavLink, Switch, Route, Redirect, withRouter, RouteComponentProp
 import {libClient, LibraryBlockMetadata} from './LibraryClient';
 import {LoadingStatus, LoadingWrapper} from './LoadingWrapper';
 import { Block, XBlockNotification } from "./Block/Block";
+import { BlockOlxWrapper } from "./BlockOlx";
 
 
 type MatchProps = {match: match<{lib_id: string, id: string}>};
@@ -44,7 +45,7 @@ class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps &
                             <p>Todo in the future: list all asset files in this XBlock's bundle folder.</p>
                         </Route>
                         <Route exact path={`${this.baseHref}/source`}>
-                            <p>Todo in the future: show the OLX source code for this block.</p>
+                            <BlockOlxWrapper blockId={this.props.id} />
                         </Route>
                         <Route>Invalid tab / URL.</Route>
                     </Switch>

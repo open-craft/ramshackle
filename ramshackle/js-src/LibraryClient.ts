@@ -104,6 +104,11 @@ class LibraryClient {
             definition_id: slug,
         }});
     }
+
+    /** Get the OLX source code of the given block */
+    async getLibraryBlockOlx(id: string): Promise<string> {
+        return (await this._call(`/blocks/${id}/olx/`)).olx;
+    }
 }
 export const libClient = new LibraryClient();
 
