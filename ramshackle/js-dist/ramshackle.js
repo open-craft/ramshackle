@@ -626,13 +626,22 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                             React.createElement("li", { className: "nav-item" },
                                 React.createElement(react_router_dom_1.NavLink, { exact: true, to: `${this.baseHref}`, className: 'nav-link', activeClassName: "active" }, "View")),
                             React.createElement("li", { className: "nav-item" },
-                                React.createElement(react_router_dom_1.NavLink, { to: `${this.baseHref}/edit`, className: 'nav-link', activeClassName: "active" }, "Edit")))),
+                                React.createElement(react_router_dom_1.NavLink, { to: `${this.baseHref}/edit`, className: 'nav-link', activeClassName: "active" }, "Edit")),
+                            React.createElement("li", { className: "nav-item" },
+                                React.createElement(react_router_dom_1.NavLink, { to: `${this.baseHref}/assets`, className: 'nav-link', activeClassName: "active" }, "Assets")),
+                            React.createElement("li", { className: "nav-item" },
+                                React.createElement(react_router_dom_1.NavLink, { to: `${this.baseHref}/source`, className: 'nav-link', activeClassName: "active" }, "Source")))),
                     React.createElement("div", { className: "card-body" },
                         React.createElement(react_router_dom_1.Switch, null,
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}` },
                                 React.createElement(Block_1.Block, { usageKey: this.props.id })),
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}/edit` },
-                                React.createElement(Block_1.Block, { usageKey: this.props.id, viewName: "studio_view", onNotification: this.handleEditNotification }))))));
+                                React.createElement(Block_1.Block, { usageKey: this.props.id, viewName: "studio_view", onNotification: this.handleEditNotification })),
+                            React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}/assets` },
+                                React.createElement("p", null, "Todo in the future: list all asset files in this XBlock's bundle folder.")),
+                            React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}/source` },
+                                React.createElement("p", null, "Todo in the future: show the OLX source code for this block.")),
+                            React.createElement(react_router_dom_1.Route, null, "Invalid tab / URL.")))));
         }
         get baseHref() {
             return `/lib/${this.props.match.params.lib_id}/blocks/${this.props.match.params.id}`;
@@ -835,8 +844,7 @@ define("ramshackle", ["require", "exports", "react", "react-dom", "react-router-
                     React.createElement(react_router_dom_5.Route, { path: "/", exact: true, component: LibraryList_1.LibraryListWrapper }),
                     React.createElement(react_router_dom_5.Route, { path: "/add/", exact: true, component: LibraryAdd_1.LibraryAddForm }),
                     React.createElement(react_router_dom_5.Route, { path: "/lib/:id/", exact: true, component: Library_1.LibraryWrapper }),
-                    React.createElement(react_router_dom_5.Route, { path: "/lib/:lib_id/blocks/:id/edit", exact: true, component: BlockPage_1.BlockPageWrapper }),
-                    React.createElement(react_router_dom_5.Route, { path: "/lib/:lib_id/blocks/:id", exact: true, component: BlockPage_1.BlockPageWrapper }),
+                    React.createElement(react_router_dom_5.Route, { path: "/lib/:lib_id/blocks/:id", component: BlockPage_1.BlockPageWrapper }),
                     React.createElement(react_router_dom_5.Route, { component: () => (React.createElement("p", null, "Not found.")) })),
                 React.createElement("footer", { style: { marginTop: "1em", borderTop: "1px solid #ddd" } },
                     React.createElement(react_router_dom_5.Link, { to: "/" }, "All libraries"))));

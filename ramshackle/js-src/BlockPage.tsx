@@ -24,6 +24,12 @@ class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps &
                         <li className="nav-item">
                             <NavLink to={`${this.baseHref}/edit`} className='nav-link' activeClassName="active">Edit</NavLink>
                         </li>
+                        <li className="nav-item">
+                            <NavLink to={`${this.baseHref}/assets`} className='nav-link' activeClassName="active">Assets</NavLink>
+                        </li>
+                        <li className="nav-item">
+                            <NavLink to={`${this.baseHref}/source`} className='nav-link' activeClassName="active">Source</NavLink>
+                        </li>
                     </ul>
                 </div>
                 <div className="card-body">
@@ -34,6 +40,13 @@ class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps &
                         <Route exact path={`${this.baseHref}/edit`}>
                             <Block usageKey={this.props.id} viewName="studio_view" onNotification={this.handleEditNotification} />
                         </Route>
+                        <Route exact path={`${this.baseHref}/assets`}>
+                            <p>Todo in the future: list all asset files in this XBlock's bundle folder.</p>
+                        </Route>
+                        <Route exact path={`${this.baseHref}/source`}>
+                            <p>Todo in the future: show the OLX source code for this block.</p>
+                        </Route>
+                        <Route>Invalid tab / URL.</Route>
                     </Switch>
                 </div>
             </div>

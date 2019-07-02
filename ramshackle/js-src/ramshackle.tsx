@@ -15,8 +15,7 @@ class Ramshackle extends React.Component {
                     <Route path="/" exact component={LibraryListWrapper}/>
                     <Route path="/add/" exact component={LibraryAddForm}/>
                     <Route path="/lib/:id/" exact component={LibraryWrapper}/>
-                    <Route path="/lib/:lib_id/blocks/:id/edit" exact component={BlockPageWrapper}/>
-                    <Route path="/lib/:lib_id/blocks/:id" exact component={BlockPageWrapper}/>
+                    <Route path="/lib/:lib_id/blocks/:id" component={BlockPageWrapper}/>
                     <Route component={() => ( <p>Not found.</p> )}/>
                 </Switch>
 
