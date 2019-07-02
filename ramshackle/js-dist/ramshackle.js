@@ -6,6 +6,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 define("LibraryClient", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -257,9 +268,9 @@ define("Block/wrap", ["require", "exports"], function (require, exports) {
      * not in our app webpack bundle.
      */
     function blockFrameJS() {
-        const CHILDREN_KEY = '_lx_xb_children';
-        const USAGE_ID_KEY = '_lx_xb_usage_id';
-        const HANDLER_URL = '_lx_xb_handler_url';
+        const CHILDREN_KEY = '_jsrt_xb_children'; // JavaScript RunTime XBlock children
+        const USAGE_ID_KEY = '_jsrt_xb_usage_id';
+        const HANDLER_URL = '_jsrt_xb_handler_url';
         /**
          * The JavaScript runtime for any XBlock in the IFrame
          */
@@ -290,6 +301,25 @@ define("Block/wrap", ["require", "exports"], function (require, exports) {
                     url += `?${query}`;
                 }
                 return url;
+            },
+            /**
+             * Pass an arbitrary message from the XBlock to the parent application.
+             * This is mostly used by the studio_view to inform the user of save events.
+             * Standard events are as follows:
+             *
+             * save: {state: 'start'|'end', message: string}
+             * -> Displays a "Saving..." style message + animation to the user until called
+             *    again with {state: 'end'}. Then closes the modal holding the studio_view.
+             *
+             * error: {title: string, message: string}
+             * -> Displays an error message to the user
+             *
+             * cancel: {}
+             * -> Close the modal holding the studio_view
+             */
+            notify: (eventType, params) => {
+                params.method = 'xblock:' + eventType;
+                postMessageToParent(params);
             },
         };
         // Recursively initialize the JavaScript code of each XBlock:
@@ -439,9 +469,8 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
                 if (this.iframeRef.current === null || event.source !== this.iframeRef.current.contentWindow) {
                     return; // This is some other random message.
                 }
-                const method = event.data.method;
+                const _a = event.data, { method, replyKey } = _a, args = __rest(_a, ["method", "replyKey"]);
                 const frame = this.iframeRef.current.contentWindow;
-                const replyKey = event.data.replyKey;
                 const sendReply = (data) => __awaiter(this, void 0, void 0, function* () {
                     frame.postMessage(Object.assign({}, data, { replyKey }), '*');
                 });
@@ -450,11 +479,17 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
                 }
                 else if (method === 'get_handler_url') {
                     sendReply({
-                        handlerUrl: yield this.getSecureHandlerUrl(event.data.usageId),
+                        handlerUrl: yield this.getSecureHandlerUrl(args.usageId),
                     });
                 }
                 else if (method === 'update_frame_height') {
-                    this.setState({ iFrameHeight: event.data.height });
+                    this.setState({ iFrameHeight: args.height });
+                }
+                else if (method.indexOf('xblock:') === 0) {
+                    // This is a notification from the XBlock's frontend via 'runtime.notify(event, args)'
+                    if (this.props.onNotification) {
+                        this.props.onNotification(Object.assign({ eventType: method.substr(7) }, args));
+                    }
                 }
             });
             this.iframeRef = React.createRef();
@@ -468,21 +503,31 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
          * Load the XBlock data from the LMS and then inject it into our IFrame.
          */
         componentDidMount() {
+            // Prepare to receive messages from the IFrame.
+            // Messages are the only way that the code in the IFrame can communicate
+            // with the surrounding UI.
+            window.addEventListener('message', this.receivedWindowMessage);
+            // Load the XBlock HTML:
+            this.loadXBlockHtml();
+        }
+        componentDidUpdate(prevProps, prevState, snapshot) {
+            if (prevProps.usageKey !== this.props.usageKey || prevProps.viewName !== this.props.viewName) {
+                // The XBlock ID or view name has changed, so we need to [re]load the IFrame.
+                // (The actual HTML will be identical, so if it weren't for this method, React would
+                // not do anything).
+                this.setState({ initialHtml: '', loadingState: 0 /* Loading */, iFrameHeight: 400 });
+                this.loadXBlockHtml();
+            }
+        }
+        loadXBlockHtml() {
             return __awaiter(this, void 0, void 0, function* () {
                 try {
                     // First load the XBlock fragment data:
-                    const data = yield LibraryClient_1.xblockClient.renderView(this.props.usageKey, 'student_view');
+                    const data = yield LibraryClient_1.xblockClient.renderView(this.props.usageKey, this.props.viewName);
                     const urlResources = data.resources.filter((r) => r.kind === 'url');
                     const html = wrap_1.wrapBlockHtmlForIFrame(data.content, urlResources.filter((r) => r.mimetype === 'application/javascript').map((r) => r.data), urlResources.filter((r) => r.mimetype === 'text/css').map((r) => r.data));
-                    // Prepare to receive messages from the IFrame.
-                    // Messages are the only way that the code in the IFrame can communicate
-                    // with the surrounding UI.
-                    window.addEventListener('message', this.receivedWindowMessage);
                     // Load the XBlock HTML into the IFrame:
-                    this.setState({
-                        initialHtml: html,
-                        loadingState: 1 /* Ready */,
-                    });
+                    this.setState({ initialHtml: html, loadingState: 1 /* Ready */ });
                 }
                 catch (err) {
                     console.error(err); // tslint:disable-line:no-console
@@ -540,6 +585,9 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
             });
         }
     }
+    Block.defaultProps = {
+        viewName: 'student_view',
+    };
     exports.Block = Block;
 });
 define("BlockPage", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper", "Block/Block"], function (require, exports, React, react_router_dom_1, LibraryClient_2, LoadingWrapper_2, Block_1) {
@@ -548,26 +596,49 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
     /**
      * Main page that has different tabs for viewing and editing an XBlock.
      */
-    class BlockPage extends React.PureComponent {
+    class _BlockPage extends React.PureComponent {
+        constructor() {
+            super(...arguments);
+            this.handleEditNotification = (event) => {
+                if (event.eventType === 'cancel') {
+                    // Cancel editing. In normal Studio, this closes the modal.
+                    // We're not using a modal, but we can go back to the 'view' tab.
+                    this.props.history.push(this.baseHref);
+                }
+                else if (event.eventType === 'save' && event.state === 'end') {
+                    // It's saved!
+                    this.props.history.push(this.baseHref);
+                }
+                else if (event.eventType === 'error') {
+                    alert((event.title || 'Error') + ': ' + event.message);
+                }
+                else {
+                    console.error("Unknown XBlock runtime event: ", event);
+                }
+            };
+        }
         render() {
-            const baseHref = `/lib/${this.props.match.params.lib_id}/blocks/${this.props.match.params.id}`;
             return React.createElement(React.Fragment, null,
                 React.createElement("h1", null, this.props.display_name),
                 React.createElement("div", { className: "card" },
                     React.createElement("div", { className: "card-header" },
                         React.createElement("ul", { className: "nav nav-tabs card-header-tabs" },
                             React.createElement("li", { className: "nav-item" },
-                                React.createElement(react_router_dom_1.NavLink, { exact: true, to: `${baseHref}`, className: 'nav-link', activeClassName: "active" }, "View")),
+                                React.createElement(react_router_dom_1.NavLink, { exact: true, to: `${this.baseHref}`, className: 'nav-link', activeClassName: "active" }, "View")),
                             React.createElement("li", { className: "nav-item" },
-                                React.createElement(react_router_dom_1.NavLink, { to: `${baseHref}/edit`, className: 'nav-link', activeClassName: "active" }, "Edit")))),
+                                React.createElement(react_router_dom_1.NavLink, { to: `${this.baseHref}/edit`, className: 'nav-link', activeClassName: "active" }, "Edit")))),
                     React.createElement("div", { className: "card-body" },
                         React.createElement(react_router_dom_1.Switch, null,
-                            React.createElement(react_router_dom_1.Route, { exact: true, path: `${baseHref}` },
+                            React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}` },
                                 React.createElement(Block_1.Block, { usageKey: this.props.id })),
-                            React.createElement(react_router_dom_1.Route, { exact: true, path: `${baseHref}/edit` }, "Edit")))));
+                            React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}/edit` },
+                                React.createElement(Block_1.Block, { usageKey: this.props.id, viewName: "studio_view", onNotification: this.handleEditNotification }))))));
+        }
+        get baseHref() {
+            return `/lib/${this.props.match.params.lib_id}/blocks/${this.props.match.params.id}`;
         }
     }
-    exports.BlockPage = BlockPage;
+    exports.BlockPage = react_router_dom_1.withRouter(_BlockPage);
     class BlockPageWrapper extends React.PureComponent {
         constructor(props) {
             super(props);
@@ -589,7 +660,7 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
         }
         render() {
             return React.createElement(LoadingWrapper_2.LoadingWrapper, { status: this.state.status },
-                React.createElement(BlockPage, Object.assign({}, this.state.data, { match: this.props.match })));
+                React.createElement(exports.BlockPage, Object.assign({}, this.state.data)));
         }
     }
     exports.BlockPageWrapper = BlockPageWrapper;

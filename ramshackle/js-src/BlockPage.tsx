@@ -1,9 +1,9 @@
 import * as React from "react";
-import { match, Link, NavLink, Switch, Route } from "react-router-dom";
+import { match, NavLink, Switch, Route, Redirect, withRouter, RouteComponentProps } from "react-router-dom";
 
-import {libClient, LibraryMetadata, LibraryBlockMetadata} from './LibraryClient';
+import {libClient, LibraryBlockMetadata} from './LibraryClient';
 import {LoadingStatus, LoadingWrapper} from './LoadingWrapper';
-import { Block } from "./Block/Block";
+import { Block, XBlockNotification } from "./Block/Block";
 
 
 type MatchProps = {match: match<{lib_id: string, id: string}>};
@@ -11,36 +11,55 @@ type MatchProps = {match: match<{lib_id: string, id: string}>};
 /**
  * Main page that has different tabs for viewing and editing an XBlock.
  */
-export class BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps> {
+class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps & RouteComponentProps> {
     render() {
-        const baseHref = `/lib/${this.props.match.params.lib_id}/blocks/${this.props.match.params.id}`;
         return <>
             <h1>{this.props.display_name}</h1>
             <div className="card">
                 <div className="card-header">
                     <ul className="nav nav-tabs card-header-tabs">
                         <li className="nav-item">
-                            <NavLink exact to={`${baseHref}`} className='nav-link' activeClassName="active">View</NavLink>
+                            <NavLink exact to={`${this.baseHref}`} className='nav-link' activeClassName="active">View</NavLink>
                         </li>
                         <li className="nav-item">
-                            <NavLink to={`${baseHref}/edit`} className='nav-link' activeClassName="active">Edit</NavLink>
+                            <NavLink to={`${this.baseHref}/edit`} className='nav-link' activeClassName="active">Edit</NavLink>
                         </li>
                     </ul>
                 </div>
                 <div className="card-body">
                     <Switch>
-                        <Route exact path={`${baseHref}`}>
+                        <Route exact path={`${this.baseHref}`}>
                             <Block usageKey={this.props.id} />
                         </Route>
-                        <Route exact path={`${baseHref}/edit`}>
-                            Edit
+                        <Route exact path={`${this.baseHref}/edit`}>
+                            <Block usageKey={this.props.id} viewName="studio_view" onNotification={this.handleEditNotification} />
                         </Route>
                     </Switch>
                 </div>
             </div>
         </>
     }
+
+    get baseHref() {
+        return `/lib/${this.props.match.params.lib_id}/blocks/${this.props.match.params.id}`;
+    }
+
+    handleEditNotification = (event: XBlockNotification) => {
+        if (event.eventType === 'cancel') {
+            // Cancel editing. In normal Studio, this closes the modal.
+            // We're not using a modal, but we can go back to the 'view' tab.
+            this.props.history.push(this.baseHref);
+        } else if (event.eventType === 'save' && event.state === 'end') {
+            // It's saved!
+            this.props.history.push(this.baseHref);
+        } else if (event.eventType === 'error') {
+            alert((event.title || 'Error') + ': ' + event.message);
+        } else {
+            console.error("Unknown XBlock runtime event: ", event);
+        }
+    }
 }
+export const BlockPage = withRouter(_BlockPage);
 
 
 export class BlockPageWrapper extends React.PureComponent<
@@ -66,7 +85,7 @@ export class BlockPageWrapper extends React.PureComponent<
 
     render() {
         return <LoadingWrapper status={this.state.status}>
-            <BlockPage {...this.state.data} match={this.props.match}/>
+            <BlockPage {...this.state.data} />
         </LoadingWrapper>;
     }
 }

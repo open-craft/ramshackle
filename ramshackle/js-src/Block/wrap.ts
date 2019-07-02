@@ -106,9 +106,9 @@ function blockFrameJS() {
         element: XBlockElement;
     }
 
-    const CHILDREN_KEY = '_lx_xb_children';
-    const USAGE_ID_KEY = '_lx_xb_usage_id';
-    const HANDLER_URL = '_lx_xb_handler_url';
+    const CHILDREN_KEY = '_jsrt_xb_children'; // JavaScript RunTime XBlock children
+    const USAGE_ID_KEY = '_jsrt_xb_usage_id';
+    const HANDLER_URL = '_jsrt_xb_handler_url';
     /**
      * In order to implement the XBlock JavaScript runtime API,
      * we need to store some data in the DOM on the XBlock DOM
@@ -154,6 +154,25 @@ function blockFrameJS() {
                 url += `?${query}`;
             }
             return url;
+        },
+        /**
+         * Pass an arbitrary message from the XBlock to the parent application.
+         * This is mostly used by the studio_view to inform the user of save events.
+         * Standard events are as follows:
+         *
+         * save: {state: 'start'|'end', message: string}
+         * -> Displays a "Saving..." style message + animation to the user until called
+         *    again with {state: 'end'}. Then closes the modal holding the studio_view.
+         *
+         * error: {title: string, message: string}
+         * -> Displays an error message to the user
+         *
+         * cancel: {}
+         * -> Close the modal holding the studio_view
+         */
+        notify: (eventType: string, params: any) => {
+            params.method = 'xblock:' + eventType;
+            postMessageToParent(params);
         },
     };
 

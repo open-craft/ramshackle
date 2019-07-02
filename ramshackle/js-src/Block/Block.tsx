@@ -8,8 +8,21 @@ import { wrapBlockHtmlForIFrame } from './wrap';
 // The domain below may be used for development but not production.
 const SECURE_ORIGIN_XBLOCK_BOOTSTRAP_HTML_URL = 'https://d3749cj02gkez2.cloudfront.net/xblock-bootstrap.html';
 
+/**
+ * Event signals that may be sent by XBlocks to the parent application.
+ * Typically these are only used by the studio_view.
+ */
+export type XBlockNotification = (
+    | {eventType: 'save', state: 'end'}
+    | {eventType: 'save', state: 'start', message?: string}
+    | {eventType: 'error', title?: string, message?: string}
+    | {eventType: 'cancel'}
+);
+
 interface BlockProps {
     usageKey: string;
+    viewName: string;
+    onNotification?: (event: XBlockNotification) => void;
 }
 
 interface BlockState {
@@ -29,6 +42,10 @@ interface BlockState {
  */
 export class Block extends React.Component<BlockProps, BlockState> {
 
+    static defaultProps = {
+        viewName: 'student_view',
+    };
+
     private iframeRef: React.RefObject<HTMLIFrameElement>;
 
     constructor(props: BlockProps) {
@@ -44,25 +61,37 @@ export class Block extends React.Component<BlockProps, BlockState> {
     /**
      * Load the XBlock data from the LMS and then inject it into our IFrame.
      */
-    public async componentDidMount() {
+    public componentDidMount() {
+        // Prepare to receive messages from the IFrame.
+        // Messages are the only way that the code in the IFrame can communicate
+        // with the surrounding UI.
+        window.addEventListener('message', this.receivedWindowMessage);
+        // Load the XBlock HTML:
+        this.loadXBlockHtml();
+    }
+
+    public componentDidUpdate(prevProps: BlockProps, prevState, snapshot) {
+        if (prevProps.usageKey !== this.props.usageKey || prevProps.viewName !== this.props.viewName) {
+            // The XBlock ID or view name has changed, so we need to [re]load the IFrame.
+            // (The actual HTML will be identical, so if it weren't for this method, React would
+            // not do anything).
+            this.setState({initialHtml: '', loadingState: LoadingStatus.Loading, iFrameHeight: 400});
+            this.loadXBlockHtml();
+        }
+    }
+
+    private async loadXBlockHtml() {
         try {
             // First load the XBlock fragment data:
-            const data = await xblockClient.renderView(this.props.usageKey, 'student_view');
+            const data = await xblockClient.renderView(this.props.usageKey, this.props.viewName);
             const urlResources = data.resources.filter((r) => r.kind === 'url');
             const html = wrapBlockHtmlForIFrame(
                 data.content,
                 urlResources.filter((r) => r.mimetype === 'application/javascript').map((r) => r.data),
                 urlResources.filter((r) => r.mimetype === 'text/css').map((r) => r.data),
             );
-            // Prepare to receive messages from the IFrame.
-            // Messages are the only way that the code in the IFrame can communicate
-            // with the surrounding UI.
-            window.addEventListener('message', this.receivedWindowMessage);
             // Load the XBlock HTML into the IFrame:
-            this.setState({
-                initialHtml: html,
-                loadingState: LoadingStatus.Ready,
-            });
+            this.setState({initialHtml: html, loadingState: LoadingStatus.Ready});
         } catch (err) {
             console.error(err); // tslint:disable-line:no-console
             this.setState({loadingState: LoadingStatus.Error});
@@ -120,9 +149,8 @@ export class Block extends React.Component<BlockProps, BlockState> {
         if (this.iframeRef.current === null || event.source !== this.iframeRef.current.contentWindow) {
             return; // This is some other random message.
         }
-        const method = event.data.method;
+        const {method, replyKey, ...args} = event.data;
         const frame = this.iframeRef.current.contentWindow!;
-        const replyKey = event.data.replyKey;
         const sendReply = async (data: any) => {
             frame.postMessage({...data, replyKey}, '*');
         };
@@ -130,10 +158,18 @@ export class Block extends React.Component<BlockProps, BlockState> {
             sendReply({initialHtml: this.state.initialHtml});
         } else if (method === 'get_handler_url') {
             sendReply({
-                handlerUrl: await this.getSecureHandlerUrl(event.data.usageId),
+                handlerUrl: await this.getSecureHandlerUrl(args.usageId),
             });
         } else if (method === 'update_frame_height') {
-            this.setState({iFrameHeight: event.data.height});
+            this.setState({iFrameHeight: args.height});
+        } else if (method.indexOf('xblock:') === 0) {
+            // This is a notification from the XBlock's frontend via 'runtime.notify(event, args)'
+            if (this.props.onNotification) {
+                this.props.onNotification({
+                    eventType: method.substr(7), // Remove the 'xblock:' prefix that we added in wrap.ts
+                    ...args,
+                });
+            }
         }
     }
 
