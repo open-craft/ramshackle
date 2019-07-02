@@ -65,17 +65,23 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
                 return this._call(`/${id}/blocks/`);
             });
         }
+        /** Get the list of block types that can be added to the given library */
+        getLibraryBlockTypes(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return this._call(`/${id}/block_types/`);
+            });
+        }
         getLibraryBlock(id) {
             return __awaiter(this, void 0, void 0, function* () {
-                // Temporary implementation:
-                const libraryId = 'lib:' + id.split(':')[1];
-                const blocks = yield this.getLibraryBlocks(libraryId);
-                for (const block of blocks) {
-                    if (block.id === id) {
-                        return block;
-                    }
-                }
-                throw new Error("Block not found.");
+                return this._call(`/blocks/${id}/`);
+            });
+        }
+        createLibraryBlock(libraryId, blockType, slug) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return this._call(`/${libraryId}/blocks/`, { method: 'POST', data: {
+                        block_type: blockType,
+                        definition_id: slug,
+                    } });
             });
         }
     }
@@ -677,7 +683,22 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
 define("Library", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_2, LibraryClient_3, LoadingWrapper_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    class Library extends React.PureComponent {
+    class _Library extends React.PureComponent {
+        constructor(props) {
+            super(props);
+            this.handleChangeNewBlockType = (event) => {
+                this.setState({ newBlockType: event.target.value });
+            };
+            this.handleChangeNewBlockSlug = (event) => {
+                this.setState({ newBlockSlug: event.target.value });
+            };
+            this.handleAddNewBlock = (event) => __awaiter(this, void 0, void 0, function* () {
+                event.preventDefault();
+                const data = yield LibraryClient_3.libClient.createLibraryBlock(this.props.id, this.state.newBlockType, this.state.newBlockSlug);
+                this.props.history.push(`/lib/${this.props.id}/blocks/${data.id}`);
+            });
+            this.state = { newBlockType: 'html', newBlockSlug: '' };
+        }
         render() {
             return React.createElement(React.Fragment, null,
                 React.createElement("h1", null, this.props.title),
@@ -702,23 +723,40 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
                             React.createElement(react_router_dom_2.Link, { to: `/lib/${this.props.id}/blocks/${block.id}/edit`, className: "btn btn-sm btn-outline-secondary mr-2" }, "Edit"),
                             block.has_unpublished_changes ?
                                 React.createElement(react_router_dom_2.Link, { to: "/", className: "btn btn-sm btn-outline-success mr-2" }, "Publish")
-                                : null)))))));
+                                : null)))))),
+                React.createElement("h2", null, "Add a new block"),
+                React.createElement("form", null,
+                    React.createElement("div", { className: "form-group" },
+                        React.createElement("label", { htmlFor: "newBlockType" }, "Type"),
+                        React.createElement("select", { className: "form-control", id: "newBlockType", value: this.state.newBlockType, onChange: this.handleChangeNewBlockType }, this.props.newBlockTypes.map(blockType => (React.createElement("option", { value: blockType.block_type, key: blockType.block_type },
+                            blockType.block_type,
+                            " (",
+                            blockType.display_name,
+                            ")"))))),
+                    React.createElement("div", { className: "form-group" },
+                        React.createElement("label", { htmlFor: "newBlockSlug" }, "Slug"),
+                        React.createElement("input", { type: "text", className: "form-control", id: "newBlockSlug", placeholder: `${this.state.newBlockType}1`, value: this.state.newBlockSlug, onChange: this.handleChangeNewBlockSlug }),
+                        React.createElement("small", null, "This becomes part of the usage ID and definition ID, and cannot be changed.")),
+                    React.createElement("button", { type: "submit", disabled: !this.state.newBlockType || !this.state.newBlockSlug, className: "btn btn-primary", onClick: this.handleAddNewBlock }, "Add Block")));
         }
     }
-    exports.Library = Library;
+    exports._Library = _Library;
+    exports.Library = react_router_dom_2.withRouter(_Library);
     class LibraryWrapper extends React.PureComponent {
         constructor(props) {
             super(props);
             this.state = {
+                blockTypes: [{ block_type: 'html', display_name: 'Text' }],
                 status: 0 /* Loading */,
             };
         }
         componentDidMount() {
             return __awaiter(this, void 0, void 0, function* () {
+                const libraryId = this.props.match.params.id;
                 try {
                     const [data, blocks] = yield Promise.all([
-                        LibraryClient_3.libClient.getLibrary(this.props.match.params.id),
-                        LibraryClient_3.libClient.getLibraryBlocks(this.props.match.params.id),
+                        LibraryClient_3.libClient.getLibrary(libraryId),
+                        LibraryClient_3.libClient.getLibraryBlocks(libraryId),
                     ]);
                     this.setState({ data, blocks, status: 1 /* Ready */ });
                 }
@@ -726,11 +764,13 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
                     console.error(err);
                     this.setState({ status: 2 /* Error */ });
                 }
+                const blockTypes = yield LibraryClient_3.libClient.getLibraryBlockTypes(libraryId);
+                this.setState({ blockTypes: blockTypes });
             });
         }
         render() {
             return React.createElement(LoadingWrapper_3.LoadingWrapper, { status: this.state.status },
-                React.createElement(Library, Object.assign({}, this.state.data, { blocks: this.state.blocks })));
+                React.createElement(exports.Library, Object.assign({}, this.state.data, { blocks: this.state.blocks, newBlockTypes: this.state.blockTypes })));
         }
     }
     exports.LibraryWrapper = LibraryWrapper;

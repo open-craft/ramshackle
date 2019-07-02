@@ -26,6 +26,15 @@ export interface LibraryBlockMetadata {
     display_name: string;
     has_unpublished_changes: boolean;
 }
+
+/**
+ * Data about each type of XBlock that can be added to a content library
+ */
+export interface LibraryXBlockType {
+    block_type: string;
+    display_name: string;
+}
+
 /**
  * Data required to create an XBlock in a content library
  */
@@ -80,16 +89,20 @@ class LibraryClient {
         return this._call(`/${id}/blocks/`);
     }
 
+    /** Get the list of block types that can be added to the given library */
+    async getLibraryBlockTypes(id: string): Promise<LibraryXBlockType[]> {
+        return this._call(`/${id}/block_types/`);
+    }
+
     async getLibraryBlock(id: string): Promise<LibraryBlockMetadata> {
-        // Temporary implementation:
-        const libraryId = 'lib:' + id.split(':')[1];
-        const blocks = await this.getLibraryBlocks(libraryId);
-        for (const block of blocks) {
-            if (block.id === id) {
-                return block;
-            }
-        }
-        throw new Error("Block not found.");
+        return this._call(`/blocks/${id}/`);
+    }
+
+    async createLibraryBlock(libraryId: string, blockType: string, slug: string): Promise<LibraryBlockMetadata> {
+        return this._call(`/${libraryId}/blocks/`, {method: 'POST', data: {
+            block_type: blockType,
+            definition_id: slug,
+        }});
     }
 }
 export const libClient = new LibraryClient();
