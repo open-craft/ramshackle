@@ -73,6 +73,12 @@ export function wrapBlockHtmlForIFrame(html: string, jsUrls: string[], cssUrls: 
                     define('underscore', [], function() { return window._; });
                 }).call(this, require || RequireJS.require, define || RequireJS.define);
             <\/script>
+            <!-- 
+                common.js: Webpack Loader and various JS bundles that may or may not be required
+                Note: This is only needed for (former) XModules that are part of edx-platform and
+                which use add_webpack_to_fragment(), such as 'problem'.
+            -->
+            <script type="text/javascript" src="${lmsBaseUrl}/static/xmodule_js/common_static/bundles/commons.js"><\/script>
             <!-- The video XBlock (and perhaps others?) expect this global: -->
             <script>
             window.onTouchBasedDevice = function() { return navigator.userAgent.match(/iPhone|iPod|iPad|Android/i); };
