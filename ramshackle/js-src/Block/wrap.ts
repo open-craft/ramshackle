@@ -86,6 +86,8 @@ export function wrapBlockHtmlForIFrame(html: string, jsUrls: string[], cssUrls: 
             <!-- At least one XBlock (drag and drop v2) expects Font Awesome -->
             <link rel="stylesheet"
                 href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+            <!-- Capa Problem Editing requires CodeMirror -->
+            <link rel="stylesheet" href="${lmsBaseUrl}/static/js/vendor/CodeMirror/codemirror.css">
             <!-- Built-in XBlocks (and some plugins) depends on LMS CSS -->
             <link rel="stylesheet" href="${lmsBaseUrl}/static/css/lms-course.css">
             ${cssTags}
