@@ -212,13 +212,12 @@ define("BlockOlx", ["require", "exports", "react", "LibraryClient", "LoadingWrap
     }
     exports.BlockOlxWrapper = BlockOlxWrapper;
 });
+/**
+ * Code to wrap an XBlock so that we can embed it in an IFrame
+ */
 define("Block/wrap", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    /**
-     * Code to wrap an XBlock so that we can embed it in an IFrame
-     */
-    const LMS_BASE_URL = 'http://localhost:18000';
     /**
      * Given an XBlock's fragment data (HTML plus CSS and JS URLs), return the
      * inner HTML that should go into an IFrame in order to display that XBlock
@@ -226,26 +225,24 @@ define("Block/wrap", ["require", "exports"], function (require, exports) {
      * @param html The XBlock's HTML (Fragment.content)
      * @param jsUrls A list of any JavaScript URLs the XBlock may require
      * @param cssUrls A list of any CSS URLs the XBlock may require
+     * @param lmsBaseUrl The absolute URL of the LMS, e.g. http://localhost:18000
+     *                   Only required for legacy XBlocks that don't declare their
+     *                   JS and CSS dependencies properly.
      */
-    function wrapBlockHtmlForIFrame(html, jsUrls, cssUrls) {
+    function wrapBlockHtmlForIFrame(html, jsUrls, cssUrls, lmsBaseUrl) {
         const jsTags = jsUrls.map((url) => `<script src="${url}"><\/script>`).join('\n');
         const cssTags = cssUrls.map((url) => `<link rel="stylesheet" href="${url}">`).join('\n');
-        const lmsBaseUrl = LMS_BASE_URL;
-        const result = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <!-- Open links in a new tab, not this iframe -->
-            <base target="_blank">
-            <meta charset="UTF-8">
-            <!--
-                JS Compatibility hacks.
-                Note: ALL XBlocks should be re-written to fully provide their own JS dependencies.
-                Each of the following is a hack to work around broken XBlocks that make assumptions
-                about the presence of JS libraries in the global scope.
-
-                Over time as we fix the upstream XBlock code, we should remove libraries/hacks from here.
-            -->
+        let legacyIncludes = ``;
+        // Most older XModules/XBlocks have a ton of undeclared dependencies on various JavaScript in the global scope.
+        // ALL XBlocks should be re-written to fully provide their own JS dependencies.
+        // We use 'learn_view' and 'edit_view' to declare a new, global-free, iframe JS environment for those new XBlocks
+        // that want full control over their JavaScript environment.
+        //
+        // Otherwise, if the XBlock uses 'student_view', 'author_view', or 'studio_view', include known required globals:
+        if (html.indexOf('xblock-v1-student_view') !== -1 ||
+            html.indexOf('xblock-v1-studio_view') !== -1 ||
+            html.indexOf('xblock-v1-author_view') !== -1) {
+            legacyIncludes += `
             <!-- gettext & XBlock JS i18n code -->
             <script type="text/javascript" src="${lmsBaseUrl}/static/js/i18n/en/djangojs.js"><\/script>
             <!-- Most XBlocks require jQuery: -->
@@ -290,9 +287,10 @@ define("Block/wrap", ["require", "exports"], function (require, exports) {
                 }).call(this, require || RequireJS.require, define || RequireJS.define);
             <\/script>
             <!-- 
-                common.js: Webpack Loader and various JS bundles that may or may not be required
-                Note: This is only needed for (former) XModules that are part of edx-platform and
-                which use add_webpack_to_fragment(), such as 'problem'.
+                commons.js: this file produced by webpack contains many shared chunks of code.
+                By including this, you have only to also import any of the smaller entrypoint
+                files (defined in webpack.common.config.js) to get that entry point and all
+                of its dependencies.
             -->
             <script type="text/javascript" src="${lmsBaseUrl}/static/xmodule_js/common_static/bundles/commons.js"><\/script>
             <!-- The video XBlock (and perhaps others?) expect this global: -->
@@ -306,6 +304,54 @@ define("Block/wrap", ["require", "exports"], function (require, exports) {
             <link rel="stylesheet" href="${lmsBaseUrl}/static/js/vendor/CodeMirror/codemirror.css">
             <!-- Built-in XBlocks (and some plugins) depends on LMS CSS -->
             <link rel="stylesheet" href="${lmsBaseUrl}/static/css/lms-course.css">
+        `;
+        }
+        /*if (html.indexOf('xblock-v1-studio_view') !== -1) {
+            // Include some of the JavaScript and CSS dependencies required for legacy blocks
+            // studio_view. Unfortuantely this isn't sufficient to get studio_view to work.
+            legacyIncludes += `
+                <!-- HTMLEditingDescriptor depends on TinyMCE -->
+                <script src="${lmsBaseUrl}/static/js/vendor/tinymce/js/tinymce/tinymce.jquery.js"><\/script>
+                <script src="${lmsBaseUrl}/static/js/vendor/tinymce/js/tinymce/jquery.tinymce.min.js"><\/script>
+                <!-- HTMLEditingDescriptor depends on baseURL and rewriteStaticLinks -->
+                <script>
+                window.baseUrl = "${lmsBaseUrl}/static/";
+                window.rewriteStaticLinks = function(content, from, to) { return content; }
+                <\/script>
+                <!-- HTMLEditingDescriptor depends on OpenSans fonts; load from CDN to avoid CORS issues -->
+                <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i&display=swap">
+                <!-- HTMLEditingDescriptor depends on TinyMCE styles -->
+                <link rel="stylesheet" href="${lmsBaseUrl}/static/js/vendor/tinymce/js/tinymce/skins/studio-tmce4/content.min.css">
+                <link rel="stylesheet" href="${lmsBaseUrl}/static/css/tinymce-studio-content.css">
+                <link rel="stylesheet" href="${lmsBaseUrl}/static/js/vendor/tinymce/js/tinymce/skins/studio-tmce4/skin.min.css">
+                <!-- HTMLEditingDescriptor relies on tinyMCE which relies on this font, but we override it to load from a CDN and avoid CORS issues. -->
+                <style>
+                    @font-face{
+                        font-family:'tinymce';
+                        src: url('https://cdnjs.cloudflare.com/ajax/libs/tinymce/4.0.20/skins/lightgray/fonts/tinymce.woff') format('woff');
+                        font-weight:normal;
+                        font-style:normal;
+                    }
+                </style>
+                <!-- Editing-specific styles -->
+                <style>
+                .xblock-v1-studio_view .html-editor {
+                    min-height: 700px;
+                }
+                .xblock-v1-studio_view .html-editor .is-inactive {
+                    display: none;
+                }
+                </style>
+            `;
+        }*/
+        const result = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <!-- Open links in a new tab, not this iframe -->
+            <base target="_blank">
+            <meta charset="UTF-8">
+            ${legacyIncludes}
             ${cssTags}
         </head>
         <body>
@@ -446,6 +492,15 @@ define("Block/wrap", ["require", "exports"], function (require, exports) {
                             data = JSON.parse(childNode.textContent);
                         }
                     });
+                    // An unfortunate inconsistency is that the old Studio runtime used
+                    // to pass 'element' as a jQuery-wrapped DOM element, whereas the LMS
+                    // runtime used to pass 'element' as the pure DOM node. In order not to
+                    // break backwards compatibility, we would need to maintain that.
+                    // However, this is currently disabled as it causes issues (need to
+                    // modify the runtime methods like handlerUrl too), and we decided not
+                    // to maintain support for legacy studio_view in this runtime.
+                    // const isStudioView = element.className.indexOf('studio_view') !== -1;
+                    // const passElement = isStudioView && (window as any).$ ? (window as any).$(element) : element;
                     const blockJS = new initFunction(runtime, element, data) || {};
                     blockJS.element = element;
                     callback(blockJS);
@@ -508,7 +563,10 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
     Object.defineProperty(exports, "__esModule", { value: true });
     // The xblock-bootstrap.html file must be hosted on a completely unique domain name.
     // The domain below may be used for development but not production.
-    const SECURE_ORIGIN_XBLOCK_BOOTSTRAP_HTML_URL = 'https://d3749cj02gkez2.cloudfront.net/xblock-bootstrap.html';
+    const SECURE_ORIGIN_XBLOCK_BOOTSTRAP_HTML_URL = '//d3749cj02gkez2.cloudfront.net/xblock-bootstrap.html';
+    // URLs to the LMS and CMS. These are required because XBlocks have a _lot_ of messy undeclared
+    // dependencies on certain JS/CSS in the global scope.
+    const LMS_BASE_URL = 'http://localhost:18000';
     /**
      * React component that displays an XBlock in a sandboxed IFrame.
      *
@@ -585,7 +643,7 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
                     // First load the XBlock fragment data:
                     const data = yield LibraryClient_2.xblockClient.renderView(this.props.usageKey, this.props.viewName);
                     const urlResources = data.resources.filter((r) => r.kind === 'url');
-                    const html = wrap_1.wrapBlockHtmlForIFrame(data.content, urlResources.filter((r) => r.mimetype === 'application/javascript').map((r) => r.data), urlResources.filter((r) => r.mimetype === 'text/css').map((r) => r.data));
+                    const html = wrap_1.wrapBlockHtmlForIFrame(data.content, urlResources.filter((r) => r.mimetype === 'application/javascript').map((r) => r.data), urlResources.filter((r) => r.mimetype === 'text/css').map((r) => r.data), LMS_BASE_URL);
                     // Load the XBlock HTML into the IFrame:
                     this.setState({ initialHtml: html, loadingState: 1 /* Ready */ });
                 }

@@ -6,7 +6,10 @@ import { wrapBlockHtmlForIFrame } from './wrap';
 
 // The xblock-bootstrap.html file must be hosted on a completely unique domain name.
 // The domain below may be used for development but not production.
-const SECURE_ORIGIN_XBLOCK_BOOTSTRAP_HTML_URL = 'https://d3749cj02gkez2.cloudfront.net/xblock-bootstrap.html';
+const SECURE_ORIGIN_XBLOCK_BOOTSTRAP_HTML_URL = '//d3749cj02gkez2.cloudfront.net/xblock-bootstrap.html';
+// URLs to the LMS and CMS. These are required because XBlocks have a _lot_ of messy undeclared
+// dependencies on certain JS/CSS in the global scope.
+const LMS_BASE_URL = 'http://localhost:18000';
 
 /**
  * Event signals that may be sent by XBlocks to the parent application.
@@ -89,6 +92,7 @@ export class Block extends React.Component<BlockProps, BlockState> {
                 data.content,
                 urlResources.filter((r) => r.mimetype === 'application/javascript').map((r) => r.data),
                 urlResources.filter((r) => r.mimetype === 'text/css').map((r) => r.data),
+                LMS_BASE_URL,
             );
             // Load the XBlock HTML into the IFrame:
             this.setState({initialHtml: html, loadingState: LoadingStatus.Ready});
