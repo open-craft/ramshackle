@@ -45,7 +45,7 @@ class BlockOlx extends React.PureComponent<{olx: string, onUpdateOlx: (olx: stri
 }
 
 
-export class BlockOlxWrapper extends React.PureComponent<{blockId: string}, {olx: string, status: LoadingStatus}> {
+export class BlockOlxWrapper extends React.PureComponent<{blockId: string, onBlockChanged: () => void}, {olx: string, status: LoadingStatus}> {
     constructor(props) {
         super(props);
         this.state = {
@@ -78,6 +78,7 @@ export class BlockOlxWrapper extends React.PureComponent<{blockId: string}, {olx
         try {
             await libClient.setLibraryBlockOlx(this.props.blockId, newOlx);
             this.setState({olx: newOlx, status: LoadingStatus.Ready});
+            this.props.onBlockChanged();
         } catch (err) {
             console.error(err);
             this.setState({status: LoadingStatus.Error});

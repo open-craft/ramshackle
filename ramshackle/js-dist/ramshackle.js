@@ -234,6 +234,7 @@ define("BlockOlx", ["require", "exports", "react", "LibraryClient", "LoadingWrap
                 try {
                     yield LibraryClient_1.libClient.setLibraryBlockOlx(this.props.blockId, newOlx);
                     this.setState({ olx: newOlx, status: 1 /* Ready */ });
+                    this.props.onBlockChanged();
                 }
                 catch (err) {
                     console.error(err);
@@ -819,7 +820,7 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}/assets` },
                                 React.createElement("p", null, "Todo in the future: list all asset in this XBlock's bundle folder. Allow uploading, replacing, and deleting any in the `static` subfolder.")),
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}/source` },
-                                React.createElement(BlockOlx_1.BlockOlxWrapper, { blockId: this.props.id })),
+                                React.createElement(BlockOlx_1.BlockOlxWrapper, { blockId: this.props.id, onBlockChanged: this.props.onBlockChanged })),
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}/actions` },
                                 React.createElement("section", null,
                                     React.createElement("h1", null, "Publish Changes"),

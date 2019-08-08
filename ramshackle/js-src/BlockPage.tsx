@@ -48,7 +48,7 @@ class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps &
                             <p>Todo in the future: list all asset in this XBlock's bundle folder. Allow uploading, replacing, and deleting any in the `static` subfolder.</p>
                         </Route>
                         <Route exact path={`${this.baseHref}/source`}>
-                            <BlockOlxWrapper blockId={this.props.id} />
+                            <BlockOlxWrapper blockId={this.props.id} onBlockChanged={this.props.onBlockChanged} />
                         </Route>
                         <Route exact path={`${this.baseHref}/actions`}>
                             <section>
