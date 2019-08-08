@@ -109,6 +109,11 @@ class LibraryClient {
     async getLibraryBlockOlx(id: string): Promise<string> {
         return (await this._call(`/blocks/${id}/olx/`)).olx;
     }
+
+    /** Set the OLX source code of the given block */
+    async setLibraryBlockOlx(id: string, newOlx: string): Promise<void> {
+        return (await this._call(`/blocks/${id}/olx/`, {method: 'POST', data: {olx: newOlx}}));
+    }
 }
 export const libClient = new LibraryClient();
 

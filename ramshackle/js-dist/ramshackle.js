@@ -90,6 +90,12 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
                 return (yield this._call(`/blocks/${id}/olx/`)).olx;
             });
         }
+        /** Set the OLX source code of the given block */
+        setLibraryBlockOlx(id, newOlx) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return (yield this._call(`/blocks/${id}/olx/`, { method: 'POST', data: { olx: newOlx } }));
+            });
+        }
     }
     exports.libClient = new LibraryClient();
     /**
@@ -178,16 +184,56 @@ define("BlockOlx", ["require", "exports", "react", "LibraryClient", "LoadingWrap
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
-     * Display the OLX source of an XBlock
+     * Display the OLX source of an XBlock.
+     *
+     * When in "edit mode", the OLX is editable.
      */
     class BlockOlx extends React.PureComponent {
+        constructor(props) {
+            super(props);
+            this.showEditMode = () => { this.setState({ isEditing: true }); };
+            this.cancelEditMode = () => { this.setState({ isEditing: false, newOlx: this.props.olx }); };
+            this.updateNewOlx = (event) => {
+                this.setState({ newOlx: event.target.value });
+            };
+            this.applyNewOlx = () => {
+                this.props.onUpdateOlx(this.state.newOlx);
+            };
+            this.state = { newOlx: this.props.olx, isEditing: false };
+        }
         render() {
-            return React.createElement("pre", null, this.props.olx);
+            if (this.state.isEditing) {
+                return React.createElement(React.Fragment, null,
+                    React.createElement("textarea", { value: this.state.newOlx, onChange: this.updateNewOlx, style: { display: 'block', fontFamily: 'monospace', width: '100%', height: '400px' } }),
+                    React.createElement("br", null),
+                    React.createElement("button", { onClick: this.cancelEditMode, className: "btn btn-outline-secondary" }, "Cancel"),
+                    React.createElement("button", { onClick: this.applyNewOlx, className: "btn btn-primary" }, "Save Changes"));
+            }
+            else {
+                return React.createElement(React.Fragment, null,
+                    React.createElement("pre", null, this.props.olx),
+                    React.createElement("br", null),
+                    React.createElement("button", { onClick: this.showEditMode, className: "btn btn-outline-secondary" }, "Edit OLX"));
+            }
         }
     }
     class BlockOlxWrapper extends React.PureComponent {
         constructor(props) {
             super(props);
+            /**
+             * If the user has made edits to the OLX, save them when they hit "Save":
+             */
+            this.applyNewOlx = (newOlx) => __awaiter(this, void 0, void 0, function* () {
+                this.setState({ status: 0 /* Loading */ });
+                try {
+                    yield LibraryClient_1.libClient.setLibraryBlockOlx(this.props.blockId, newOlx);
+                    this.setState({ olx: newOlx, status: 1 /* Ready */ });
+                }
+                catch (err) {
+                    console.error(err);
+                    this.setState({ status: 2 /* Error */ });
+                }
+            });
             this.state = {
                 olx: '',
                 status: 0 /* Loading */,
@@ -207,7 +253,7 @@ define("BlockOlx", ["require", "exports", "react", "LibraryClient", "LoadingWrap
         }
         render() {
             return React.createElement(LoadingWrapper_1.LoadingWrapper, { status: this.state.status },
-                React.createElement(BlockOlx, { olx: this.state.olx }));
+                React.createElement(BlockOlx, { olx: this.state.olx, onUpdateOlx: this.applyNewOlx }));
         }
     }
     exports.BlockOlxWrapper = BlockOlxWrapper;
