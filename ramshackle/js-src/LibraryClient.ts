@@ -114,6 +114,11 @@ class LibraryClient {
     async setLibraryBlockOlx(id: string, newOlx: string): Promise<void> {
         return (await this._call(`/blocks/${id}/olx/`, {method: 'POST', data: {olx: newOlx}}));
     }
+
+    /** Commit draft changes to the given block and its descendants */
+    async commitLibraryBlock(id: string): Promise<void> {
+        return (await this._call(`/blocks/${id}/commit/`, {method: 'POST'}));
+    }
 }
 export const libClient = new LibraryClient();
 

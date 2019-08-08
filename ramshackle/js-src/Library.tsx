@@ -9,6 +9,8 @@ interface Props extends LibraryMetadata, RouteComponentProps {
     blocks: LibraryBlockMetadata[];
     /** A list of XBlock types that *can* be added to this library. */
     newBlockTypes: LibraryXBlockType[];
+    /** Event to notify that the library has been updated. */
+    onLibraryChanged: () => void;
 }
 interface State {
     newBlockType: string;
@@ -47,7 +49,7 @@ export class _Library extends React.PureComponent<Props, State> {
                                     <Link to={`/lib/${this.props.id}/blocks/${block.id}/edit`} className="btn btn-sm btn-outline-secondary mr-2">Edit</Link>
                                     {
                                         block.has_unpublished_changes ?
-                                            <Link to="/" className="btn btn-sm btn-outline-success mr-2">Publish</Link>
+                                            <button onClick={() => {this.handlePublishBlock(block.id)}} className="btn btn-sm btn-outline-success mr-2">Publish</button>
                                         : null
                                     }
                                 </div>
@@ -89,6 +91,12 @@ export class _Library extends React.PureComponent<Props, State> {
         const data = await libClient.createLibraryBlock(this.props.id, this.state.newBlockType, this.state.newBlockSlug);
         this.props.history.push(`/lib/${this.props.id}/blocks/${data.id}`);
     }
+
+    handlePublishBlock = async (blockId: string) => {
+        event.preventDefault();
+        await libClient.commitLibraryBlock(blockId);
+        this.props.onLibraryChanged();
+    } 
 }
 export const Library = withRouter(_Library);
 
@@ -106,6 +114,13 @@ export class LibraryWrapper extends React.PureComponent<
     }
     
     async componentDidMount() {
+        this.fetchLibraryData();
+        const libraryId = this.props.match.params.id;
+        const blockTypes = await libClient.getLibraryBlockTypes(libraryId);
+        this.setState({blockTypes: blockTypes});
+    }
+
+    fetchLibraryData = async () => {
         const libraryId = this.props.match.params.id;
         try {
             const [data, blocks] = await Promise.all([
@@ -117,13 +132,11 @@ export class LibraryWrapper extends React.PureComponent<
             console.error(err);
             this.setState({status: LoadingStatus.Error});
         }
-        const blockTypes = await libClient.getLibraryBlockTypes(libraryId);
-        this.setState({blockTypes: blockTypes});
     }
 
     render() {
         return <LoadingWrapper status={this.state.status}>
-            <Library {...this.state.data} blocks={this.state.blocks} newBlockTypes={this.state.blockTypes}/>
+            <Library {...this.state.data} blocks={this.state.blocks} newBlockTypes={this.state.blockTypes} onLibraryChanged={this.fetchLibraryData}/>
         </LoadingWrapper>;
     }
 }

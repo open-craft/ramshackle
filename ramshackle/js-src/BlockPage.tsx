@@ -12,7 +12,7 @@ type MatchProps = {match: match<{lib_id: string, id: string}>};
 /**
  * Main page that has different tabs for viewing and editing an XBlock.
  */
-class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps & RouteComponentProps> {
+class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps & RouteComponentProps & {onBlockChanged: () => void}> {
     render() {
         return <>
             <h1>{this.props.display_name}</h1>
@@ -31,6 +31,9 @@ class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps &
                         <li className="nav-item">
                             <NavLink to={`${this.baseHref}/source`} className='nav-link' activeClassName="active">Source</NavLink>
                         </li>
+                        <li className="nav-item">
+                            <NavLink to={`${this.baseHref}/actions`} className='nav-link' activeClassName="active">Actions</NavLink>
+                        </li>
                     </ul>
                 </div>
                 <div className="card-body">
@@ -42,10 +45,20 @@ class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps &
                             <Block usageKey={this.props.id} viewName="studio_view" onNotification={this.handleEditNotification} />
                         </Route>
                         <Route exact path={`${this.baseHref}/assets`}>
-                            <p>Todo in the future: list all asset files in this XBlock's bundle folder.</p>
+                            <p>Todo in the future: list all asset in this XBlock's bundle folder. Allow uploading, replacing, and deleting any in the `static` subfolder.</p>
                         </Route>
                         <Route exact path={`${this.baseHref}/source`}>
                             <BlockOlxWrapper blockId={this.props.id} />
+                        </Route>
+                        <Route exact path={`${this.baseHref}/actions`}>
+                            <section>
+                                <h1>Publish Changes</h1>
+                                <button onClick={this.handlePublishChanges} className="btn btn-success mb-2 mr-2" disabled={!this.props.has_unpublished_changes}>Publish Changes</button>
+                                <button onClick={this.handleDiscardChanges} className="btn btn-outline-danger mb-2 mr-2" disabled={!this.props.has_unpublished_changes}>Discard Changes</button>
+                                {this.props.has_unpublished_changes ? "Discarding changes is not yet implemented in Blockstore." : "No changes to publish."}
+                                <br />
+                                <br />
+                            </section>
                         </Route>
                         <Route>Invalid tab / URL.</Route>
                     </Switch>
@@ -72,6 +85,15 @@ class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps &
             console.error("Unknown XBlock runtime event: ", event);
         }
     }
+
+    handlePublishChanges = async () => {
+        await libClient.commitLibraryBlock(this.props.id);
+        this.props.onBlockChanged();
+    }
+
+    handleDiscardChanges = async () => {
+        alert("Discarding changes is not yet implemented in Blockstore.")
+    }
 }
 export const BlockPage = withRouter(_BlockPage);
 
@@ -88,6 +110,13 @@ export class BlockPageWrapper extends React.PureComponent<
     }
     
     async componentDidMount() {
+        this.refreshBlockData();
+    }
+
+    /**
+     * Load or reload the data about this block.
+     */
+    refreshBlockData = async () => {
         try {
             const data = await libClient.getLibraryBlock(this.props.match.params.id);
             this.setState({data, status: LoadingStatus.Ready});
@@ -99,7 +128,7 @@ export class BlockPageWrapper extends React.PureComponent<
 
     render() {
         return <LoadingWrapper status={this.state.status}>
-            <BlockPage {...this.state.data} />
+            <BlockPage {...this.state.data} onBlockChanged={this.refreshBlockData} />
         </LoadingWrapper>;
     }
 }

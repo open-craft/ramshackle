@@ -96,6 +96,12 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
                 return (yield this._call(`/blocks/${id}/olx/`, { method: 'POST', data: { olx: newOlx } }));
             });
         }
+        /** Commit draft changes to the given block and its descendants */
+        commitLibraryBlock(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return (yield this._call(`/blocks/${id}/commit/`, { method: 'POST' }));
+            });
+        }
     }
     exports.libClient = new LibraryClient();
     /**
@@ -780,6 +786,13 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                     console.error("Unknown XBlock runtime event: ", event);
                 }
             };
+            this.handlePublishChanges = () => __awaiter(this, void 0, void 0, function* () {
+                yield LibraryClient_3.libClient.commitLibraryBlock(this.props.id);
+                this.props.onBlockChanged();
+            });
+            this.handleDiscardChanges = () => __awaiter(this, void 0, void 0, function* () {
+                alert("Discarding changes is not yet implemented in Blockstore.");
+            });
         }
         render() {
             return React.createElement(React.Fragment, null,
@@ -794,7 +807,9 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                             React.createElement("li", { className: "nav-item" },
                                 React.createElement(react_router_dom_1.NavLink, { to: `${this.baseHref}/assets`, className: 'nav-link', activeClassName: "active" }, "Assets")),
                             React.createElement("li", { className: "nav-item" },
-                                React.createElement(react_router_dom_1.NavLink, { to: `${this.baseHref}/source`, className: 'nav-link', activeClassName: "active" }, "Source")))),
+                                React.createElement(react_router_dom_1.NavLink, { to: `${this.baseHref}/source`, className: 'nav-link', activeClassName: "active" }, "Source")),
+                            React.createElement("li", { className: "nav-item" },
+                                React.createElement(react_router_dom_1.NavLink, { to: `${this.baseHref}/actions`, className: 'nav-link', activeClassName: "active" }, "Actions")))),
                     React.createElement("div", { className: "card-body" },
                         React.createElement(react_router_dom_1.Switch, null,
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}` },
@@ -802,9 +817,17 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}/edit` },
                                 React.createElement(Block_1.Block, { usageKey: this.props.id, viewName: "studio_view", onNotification: this.handleEditNotification })),
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}/assets` },
-                                React.createElement("p", null, "Todo in the future: list all asset files in this XBlock's bundle folder.")),
+                                React.createElement("p", null, "Todo in the future: list all asset in this XBlock's bundle folder. Allow uploading, replacing, and deleting any in the `static` subfolder.")),
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}/source` },
                                 React.createElement(BlockOlx_1.BlockOlxWrapper, { blockId: this.props.id })),
+                            React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.baseHref}/actions` },
+                                React.createElement("section", null,
+                                    React.createElement("h1", null, "Publish Changes"),
+                                    React.createElement("button", { onClick: this.handlePublishChanges, className: "btn btn-success mb-2 mr-2", disabled: !this.props.has_unpublished_changes }, "Publish Changes"),
+                                    React.createElement("button", { onClick: this.handleDiscardChanges, className: "btn btn-outline-danger mb-2 mr-2", disabled: !this.props.has_unpublished_changes }, "Discard Changes"),
+                                    this.props.has_unpublished_changes ? "Discarding changes is not yet implemented in Blockstore." : "No changes to publish.",
+                                    React.createElement("br", null),
+                                    React.createElement("br", null))),
                             React.createElement(react_router_dom_1.Route, null, "Invalid tab / URL.")))));
         }
         get baseHref() {
@@ -815,12 +838,10 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
     class BlockPageWrapper extends React.PureComponent {
         constructor(props) {
             super(props);
-            this.state = {
-                status: 0 /* Loading */,
-            };
-        }
-        componentDidMount() {
-            return __awaiter(this, void 0, void 0, function* () {
+            /**
+             * Load or reload the data about this block.
+             */
+            this.refreshBlockData = () => __awaiter(this, void 0, void 0, function* () {
                 try {
                     const data = yield LibraryClient_3.libClient.getLibraryBlock(this.props.match.params.id);
                     this.setState({ data, status: 1 /* Ready */ });
@@ -830,10 +851,18 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                     this.setState({ status: 2 /* Error */ });
                 }
             });
+            this.state = {
+                status: 0 /* Loading */,
+            };
+        }
+        componentDidMount() {
+            return __awaiter(this, void 0, void 0, function* () {
+                this.refreshBlockData();
+            });
         }
         render() {
             return React.createElement(LoadingWrapper_3.LoadingWrapper, { status: this.state.status },
-                React.createElement(exports.BlockPage, Object.assign({}, this.state.data)));
+                React.createElement(exports.BlockPage, Object.assign({}, this.state.data, { onBlockChanged: this.refreshBlockData })));
         }
     }
     exports.BlockPageWrapper = BlockPageWrapper;
@@ -854,6 +883,11 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
                 event.preventDefault();
                 const data = yield LibraryClient_4.libClient.createLibraryBlock(this.props.id, this.state.newBlockType, this.state.newBlockSlug);
                 this.props.history.push(`/lib/${this.props.id}/blocks/${data.id}`);
+            });
+            this.handlePublishBlock = (blockId) => __awaiter(this, void 0, void 0, function* () {
+                event.preventDefault();
+                yield LibraryClient_4.libClient.commitLibraryBlock(blockId);
+                this.props.onLibraryChanged();
             });
             this.state = { newBlockType: 'html', newBlockSlug: '' };
         }
@@ -880,7 +914,7 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
                             React.createElement(react_router_dom_2.Link, { to: `/lib/${this.props.id}/blocks/${block.id}`, className: "btn btn-sm btn-outline-primary mr-2" }, "View"),
                             React.createElement(react_router_dom_2.Link, { to: `/lib/${this.props.id}/blocks/${block.id}/edit`, className: "btn btn-sm btn-outline-secondary mr-2" }, "Edit"),
                             block.has_unpublished_changes ?
-                                React.createElement(react_router_dom_2.Link, { to: "/", className: "btn btn-sm btn-outline-success mr-2" }, "Publish")
+                                React.createElement("button", { onClick: () => { this.handlePublishBlock(block.id); }, className: "btn btn-sm btn-outline-success mr-2" }, "Publish")
                                 : null)))))),
                 React.createElement("h2", null, "Add a new block"),
                 React.createElement("form", null,
@@ -903,13 +937,7 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
     class LibraryWrapper extends React.PureComponent {
         constructor(props) {
             super(props);
-            this.state = {
-                blockTypes: [{ block_type: 'html', display_name: 'Text' }],
-                status: 0 /* Loading */,
-            };
-        }
-        componentDidMount() {
-            return __awaiter(this, void 0, void 0, function* () {
+            this.fetchLibraryData = () => __awaiter(this, void 0, void 0, function* () {
                 const libraryId = this.props.match.params.id;
                 try {
                     const [data, blocks] = yield Promise.all([
@@ -922,13 +950,23 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
                     console.error(err);
                     this.setState({ status: 2 /* Error */ });
                 }
+            });
+            this.state = {
+                blockTypes: [{ block_type: 'html', display_name: 'Text' }],
+                status: 0 /* Loading */,
+            };
+        }
+        componentDidMount() {
+            return __awaiter(this, void 0, void 0, function* () {
+                this.fetchLibraryData();
+                const libraryId = this.props.match.params.id;
                 const blockTypes = yield LibraryClient_4.libClient.getLibraryBlockTypes(libraryId);
                 this.setState({ blockTypes: blockTypes });
             });
         }
         render() {
             return React.createElement(LoadingWrapper_4.LoadingWrapper, { status: this.state.status },
-                React.createElement(exports.Library, Object.assign({}, this.state.data, { blocks: this.state.blocks, newBlockTypes: this.state.blockTypes })));
+                React.createElement(exports.Library, Object.assign({}, this.state.data, { blocks: this.state.blocks, newBlockTypes: this.state.blockTypes, onLibraryChanged: this.fetchLibraryData })));
         }
     }
     exports.LibraryWrapper = LibraryWrapper;
