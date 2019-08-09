@@ -1,21 +1,22 @@
 import * as React from "react";
-import { match, NavLink, Switch, Route, Redirect, withRouter, RouteComponentProps } from "react-router-dom";
+import { NavLink, Switch, Route, withRouter, RouteComponentProps } from "react-router-dom";
 
 import {libClient, LibraryBlockMetadata} from './LibraryClient';
 import {LoadingStatus, LoadingWrapper} from './LoadingWrapper';
 import { Block, XBlockNotification } from "./Block/Block";
 import { BlockOlxWrapper } from "./BlockOlx";
 
-
-type MatchProps = {match: match<{lib_id: string, id: string}>};
-
+type RouteProps = RouteComponentProps<{libId: string, blockId: string}>;
+interface BlockPageProps extends LibraryBlockMetadata, RouteProps {
+    onBlockChanged: () => void;
+}
 /**
  * Main page that has different tabs for viewing and editing an XBlock.
  */
-class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps & RouteComponentProps & {onBlockChanged: () => void}> {
+class _BlockPage extends React.PureComponent<BlockPageProps> {
     render() {
         return <>
-            <h1>{this.props.display_name}</h1>
+            <h2>{this.props.display_name}</h2>
             <div className="card">
                 <div className="card-header">
                     <ul className="nav nav-tabs card-header-tabs">
@@ -38,19 +39,19 @@ class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps &
                 </div>
                 <div className="card-body">
                     <Switch>
-                        <Route exact path={`${this.baseHref}`}>
+                        <Route exact path={`${this.props.match.path}`}>
                             <Block usageKey={this.props.id} />
                         </Route>
-                        <Route exact path={`${this.baseHref}/edit`}>
+                        <Route exact path={`${this.props.match.path}/edit`}>
                             <Block usageKey={this.props.id} viewName="studio_view" onNotification={this.handleEditNotification} />
                         </Route>
-                        <Route exact path={`${this.baseHref}/assets`}>
+                        <Route exact path={`${this.props.match.path}/assets`}>
                             <p>Todo in the future: list all asset in this XBlock's bundle folder. Allow uploading, replacing, and deleting any in the `static` subfolder.</p>
                         </Route>
-                        <Route exact path={`${this.baseHref}/source`}>
+                        <Route exact path={`${this.props.match.path}/source`}>
                             <BlockOlxWrapper blockId={this.props.id} onBlockChanged={this.props.onBlockChanged} />
                         </Route>
-                        <Route exact path={`${this.baseHref}/actions`}>
+                        <Route exact path={`${this.props.match.path}/actions`}>
                             <section>
                                 <h1>Publish Changes</h1>
                                 <button onClick={this.handlePublishChanges} className="btn btn-success mb-2 mr-2" disabled={!this.props.has_unpublished_changes}>Publish Changes</button>
@@ -68,7 +69,7 @@ class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps &
     }
 
     get baseHref() {
-        return `/lib/${this.props.match.params.lib_id}/blocks/${this.props.match.params.id}`;
+        return this.props.match.url;
     }
 
     handleEditNotification = (event: XBlockNotification) => {
@@ -98,8 +99,8 @@ class _BlockPage extends React.PureComponent<LibraryBlockMetadata & MatchProps &
 export const BlockPage = withRouter(_BlockPage);
 
 
-export class BlockPageWrapper extends React.PureComponent<
-    MatchProps,
+class _BlockPageWrapper extends React.PureComponent<
+    RouteProps & {onBlockChanged: () => void},
     {data?: LibraryBlockMetadata, status: LoadingStatus}
 > {
     constructor(props) {
@@ -118,7 +119,7 @@ export class BlockPageWrapper extends React.PureComponent<
      */
     refreshBlockData = async () => {
         try {
-            const data = await libClient.getLibraryBlock(this.props.match.params.id);
+            const data = await libClient.getLibraryBlock(this.props.match.params.blockId);
             this.setState({data, status: LoadingStatus.Ready});
         } catch (err) {
             console.error(err);
@@ -126,9 +127,16 @@ export class BlockPageWrapper extends React.PureComponent<
         }
     }
 
+    handleBlockChanged = () => {
+        this.refreshBlockData();
+        this.props.onBlockChanged();
+    }
+
     render() {
         return <LoadingWrapper status={this.state.status}>
-            <BlockPage {...this.state.data} onBlockChanged={this.refreshBlockData} />
+            <BlockPage {...this.state.data} onBlockChanged={this.handleBlockChanged} />
         </LoadingWrapper>;
     }
 }
+
+export const BlockPageWrapper = withRouter(_BlockPageWrapper);
