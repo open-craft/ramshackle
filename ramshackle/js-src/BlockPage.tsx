@@ -54,9 +54,9 @@ class _BlockPage extends React.PureComponent<BlockPageProps> {
                         <Route exact path={`${this.props.match.path}/actions`}>
                             <section>
                                 <h1>Publish Changes</h1>
-                                <button onClick={this.handlePublishChanges} className="btn btn-success mb-2 mr-2" disabled={!this.props.has_unpublished_changes}>Publish Changes</button>
-                                <button onClick={this.handleDiscardChanges} className="btn btn-outline-danger mb-2 mr-2" disabled={!this.props.has_unpublished_changes}>Discard Changes</button>
-                                {this.props.has_unpublished_changes ? "Discarding changes is not yet implemented in Blockstore." : "No changes to publish."}
+                                <button className="btn btn-success mb-2 mr-2" disabled={true}>Publish Changes</button>
+                                <button className="btn btn-outline-danger mb-2 mr-2" disabled={true}>Discard Changes</button>
+                                {this.props.has_unpublished_changes ? "Publishing/discarding changes to specific blocks is not yet implemented in Blockstore." : "No changes to publish."}
                                 <br />
                                 <br />
                             </section>
@@ -89,15 +89,6 @@ class _BlockPage extends React.PureComponent<BlockPageProps> {
         } else {
             console.error("Unknown XBlock runtime event: ", event);
         }
-    }
-
-    handlePublishChanges = async () => {
-        await libClient.commitLibraryBlock(this.props.id);
-        this.props.onBlockChanged();
-    }
-
-    handleDiscardChanges = async () => {
-        alert("Discarding changes is not yet implemented in Blockstore.");
     }
 
     handleDeleteBlock = async () => {

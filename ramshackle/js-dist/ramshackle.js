@@ -55,6 +55,18 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
                 return this._call(`/${id}/`);
             });
         }
+        /** Commit draft changes to the given library */
+        commitLibraryChanges(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return (yield this._call(`/${id}/commit/`, { method: 'POST' }));
+            });
+        }
+        /** Revert draft changes to the given library */
+        revertLibraryChanges(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return (yield this._call(`/${id}/commit/`, { method: 'DELETE' }));
+            });
+        }
         createLibrary(data) {
             return __awaiter(this, void 0, void 0, function* () {
                 return this._call(`/`, { method: 'POST', data: data });
@@ -99,12 +111,6 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
         setLibraryBlockOlx(id, newOlx) {
             return __awaiter(this, void 0, void 0, function* () {
                 yield this._call(`/blocks/${id}/olx/`, { method: 'POST', data: { olx: newOlx } });
-            });
-        }
-        /** Commit draft changes to the given block and its descendants */
-        commitLibraryBlock(id) {
-            return __awaiter(this, void 0, void 0, function* () {
-                return (yield this._call(`/blocks/${id}/commit/`, { method: 'POST' }));
             });
         }
     }
@@ -792,13 +798,6 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                     console.error("Unknown XBlock runtime event: ", event);
                 }
             };
-            this.handlePublishChanges = () => __awaiter(this, void 0, void 0, function* () {
-                yield LibraryClient_3.libClient.commitLibraryBlock(this.props.id);
-                this.props.onBlockChanged();
-            });
-            this.handleDiscardChanges = () => __awaiter(this, void 0, void 0, function* () {
-                alert("Discarding changes is not yet implemented in Blockstore.");
-            });
             this.handleDeleteBlock = () => __awaiter(this, void 0, void 0, function* () {
                 if (confirm("Are you sure you want to delete this XBlock? There is no undo.")) {
                     yield LibraryClient_3.libClient.deleteLibraryBlock(this.props.id);
@@ -838,9 +837,9 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.props.match.path}/actions` },
                                 React.createElement("section", null,
                                     React.createElement("h1", null, "Publish Changes"),
-                                    React.createElement("button", { onClick: this.handlePublishChanges, className: "btn btn-success mb-2 mr-2", disabled: !this.props.has_unpublished_changes }, "Publish Changes"),
-                                    React.createElement("button", { onClick: this.handleDiscardChanges, className: "btn btn-outline-danger mb-2 mr-2", disabled: !this.props.has_unpublished_changes }, "Discard Changes"),
-                                    this.props.has_unpublished_changes ? "Discarding changes is not yet implemented in Blockstore." : "No changes to publish.",
+                                    React.createElement("button", { className: "btn btn-success mb-2 mr-2", disabled: true }, "Publish Changes"),
+                                    React.createElement("button", { className: "btn btn-outline-danger mb-2 mr-2", disabled: true }, "Discard Changes"),
+                                    this.props.has_unpublished_changes ? "Publishing/discarding changes to specific blocks is not yet implemented in Blockstore." : "No changes to publish.",
                                     React.createElement("br", null),
                                     React.createElement("br", null)),
                                 React.createElement("section", null,
@@ -908,8 +907,9 @@ define("LibraryBlocks", ["require", "exports", "react", "react-router-dom", "Lib
             });
             this.handlePublishBlock = (blockId) => __awaiter(this, void 0, void 0, function* () {
                 event.preventDefault();
-                yield LibraryClient_4.libClient.commitLibraryBlock(blockId);
-                this.props.onLibraryChanged();
+                // Publishing changes to individual blocks is not yet implemented.
+                //await libClient.commitLibraryBlock(blockId);
+                //this.props.onLibraryChanged();
             });
             this.state = { newBlockType: 'html', newBlockSlug: '' };
         }
@@ -929,7 +929,7 @@ define("LibraryBlocks", ["require", "exports", "react", "react-router-dom", "Lib
                             React.createElement(react_router_dom_2.Link, { to: `/lib/${this.props.libraryId}/blocks/${block.id}`, className: "btn btn-sm btn-outline-primary mr-2" }, "View"),
                             React.createElement(react_router_dom_2.Link, { to: `/lib/${this.props.libraryId}/blocks/${block.id}/edit`, className: "btn btn-sm btn-outline-secondary mr-2" }, "Edit"),
                             block.has_unpublished_changes ?
-                                React.createElement("button", { onClick: () => { this.handlePublishBlock(block.id); }, className: "btn btn-sm btn-outline-success mr-2" }, "Publish")
+                                React.createElement("button", { onClick: () => { this.handlePublishBlock(block.id); }, className: "btn btn-sm btn-outline-success mr-2", disabled: true, title: "Publishing specific blocks not implemented yet" }, "Publish")
                                 : null)))))),
                 React.createElement("h2", null, "Add a new block"),
                 React.createElement("form", null,
@@ -993,6 +993,18 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
     class _Library extends React.PureComponent {
         constructor(props) {
             super(props);
+            /** Publish/commit all pending changes to this content library */
+            this.handlePublishChanges = () => __awaiter(this, void 0, void 0, function* () {
+                yield LibraryClient_5.libClient.commitLibraryChanges(this.props.id);
+                this.props.onLibraryChanged();
+                window.location.reload(); // Todo: Tell <LibraryBlocksWrapper> to refresh instead of reloading the page
+            });
+            /** Revert all pending changes to this content library */
+            this.handleRevertChanges = () => __awaiter(this, void 0, void 0, function* () {
+                yield LibraryClient_5.libClient.revertLibraryChanges(this.props.id);
+                this.props.onLibraryChanged();
+                window.location.reload(); // Todo: Tell <LibraryBlocksWrapper> to refresh instead of reloading the page
+            });
             this.state = { newBlockType: 'html', newBlockSlug: '' };
         }
         render() {
@@ -1011,6 +1023,21 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
                     React.createElement("p", null,
                         "Description: ",
                         this.props.description),
+                    React.createElement("p", null,
+                        "Bundle: ",
+                        this.props.bundle_uuid,
+                        " ",
+                        ' ',
+                        "(",
+                        React.createElement("a", { href: `http://localhost:18250/admin/bundles/bundle/?uuid=${this.props.bundle_uuid}` }, "Blockstore admin"),
+                        ") (",
+                        React.createElement("a", { href: `http://localhost:18250/api/v1/bundles/${this.props.bundle_uuid}` }, "Blockstore API"),
+                        ")"),
+                    this.props.has_unpublished_changes ? React.createElement(React.Fragment, null,
+                        React.createElement("h2", null, "Unpublished Changes"),
+                        this.props.has_unpublished_deletes ? React.createElement("p", null, "Has unpublished changes, including deleted XBlocks.") : React.createElement("p", null, "Has unpublished changes."),
+                        React.createElement("button", { onClick: this.handlePublishChanges, className: "btn btn-success mb-2 mr-2" }, "Publish Changes"),
+                        React.createElement("button", { onClick: this.handleRevertChanges, className: "btn btn-outline-danger mb-2 mr-2" }, "Discard Changes")) : React.createElement("p", null, "No unpublished changes."),
                     React.createElement(LibraryBlocks_1.LibraryBlocksWrapper, { libraryId: this.props.id, onLibraryChanged: this.props.onLibraryChanged })),
                 React.createElement(react_router_dom_3.Route, null, "Not found."));
         }

@@ -13,6 +13,8 @@ export interface LibraryMetadata {
     title: string;
     description: string;
     version: number;
+    has_unpublished_changes: boolean;
+    has_unpublished_deletes: boolean;
 }
 export type LibraryCreateData = Pick<LibraryMetadata, 'slug'|'title'|'description'>&{collection_uuid: string};
 
@@ -81,6 +83,16 @@ class LibraryClient {
         return this._call(`/${id}/`);
     }
 
+    /** Commit draft changes to the given library */
+    async commitLibraryChanges(id: string): Promise<void> {
+        return (await this._call(`/${id}/commit/`, {method: 'POST'}));
+    }
+
+    /** Revert draft changes to the given library */
+    async revertLibraryChanges(id: string): Promise<void> {
+        return (await this._call(`/${id}/commit/`, {method: 'DELETE'}));
+    }
+
     async createLibrary(data: LibraryCreateData): Promise<LibraryMetadata> {
         return this._call(`/`, {method: 'POST', data: data});
     }
@@ -117,11 +129,6 @@ class LibraryClient {
     /** Set the OLX source code of the given block */
     async setLibraryBlockOlx(id: string, newOlx: string): Promise<void> {
         await this._call(`/blocks/${id}/olx/`, {method: 'POST', data: {olx: newOlx}});
-    }
-
-    /** Commit draft changes to the given block and its descendants */
-    async commitLibraryBlock(id: string): Promise<void> {
-        return (await this._call(`/blocks/${id}/commit/`, {method: 'POST'}));
     }
 }
 export const libClient = new LibraryClient();

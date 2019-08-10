@@ -26,6 +26,19 @@ export class _Library extends React.PureComponent<LibraryProps> {
                 <h1>{this.props.title}</h1>
                 <p>Version: {this.props.version}</p>
                 <p>Description: {this.props.description}</p>
+                <p>
+                    Bundle: {this.props.bundle_uuid} {' '}
+                    (<a href={`http://localhost:18250/admin/bundles/bundle/?uuid=${this.props.bundle_uuid}`}>Blockstore admin</a>)
+                    (<a href={`http://localhost:18250/api/v1/bundles/${this.props.bundle_uuid}`}>Blockstore API</a>)
+                </p>
+                {
+                    this.props.has_unpublished_changes ? <>
+                        <h2>Unpublished Changes</h2>
+                        {this.props.has_unpublished_deletes ? <p>Has unpublished changes, including deleted XBlocks.</p> : <p>Has unpublished changes.</p>} 
+                        <button onClick={this.handlePublishChanges} className="btn btn-success mb-2 mr-2">Publish Changes</button>
+                        <button onClick={this.handleRevertChanges} className="btn btn-outline-danger mb-2 mr-2">Discard Changes</button>
+                    </> : <p>No unpublished changes.</p>
+                }
                 <LibraryBlocksWrapper libraryId={this.props.id} onLibraryChanged={this.props.onLibraryChanged}/>
             </Route>
             <Route>
@@ -34,6 +47,19 @@ export class _Library extends React.PureComponent<LibraryProps> {
         </Switch>
     }
 
+    /** Publish/commit all pending changes to this content library */
+    handlePublishChanges = async () => {
+        await libClient.commitLibraryChanges(this.props.id);
+        this.props.onLibraryChanged();
+        window.location.reload(); // Todo: Tell <LibraryBlocksWrapper> to refresh instead of reloading the page
+    }
+
+    /** Revert all pending changes to this content library */
+    handleRevertChanges = async () => {
+        await libClient.revertLibraryChanges(this.props.id);
+        this.props.onLibraryChanged();
+        window.location.reload(); // Todo: Tell <LibraryBlocksWrapper> to refresh instead of reloading the page
+    }
 }
 export const Library = withRouter(_Library);
 
