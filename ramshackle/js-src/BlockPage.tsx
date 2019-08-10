@@ -60,6 +60,10 @@ class _BlockPage extends React.PureComponent<BlockPageProps> {
                                 <br />
                                 <br />
                             </section>
+                            <section>
+                                <h1>Delete</h1>
+                                <button onClick={this.handleDeleteBlock} className="btn btn-outline-danger mb-2 mr-2">Delete this XBlock</button>
+                            </section>
                         </Route>
                         <Route>Invalid tab / URL.</Route>
                     </Switch>
@@ -93,7 +97,17 @@ class _BlockPage extends React.PureComponent<BlockPageProps> {
     }
 
     handleDiscardChanges = async () => {
-        alert("Discarding changes is not yet implemented in Blockstore.")
+        alert("Discarding changes is not yet implemented in Blockstore.");
+    }
+
+    handleDeleteBlock = async () => {
+        if (confirm("Are you sure you want to delete this XBlock? There is no undo.")) {
+            await libClient.deleteLibraryBlock(this.props.id);
+            // Leave this page:
+            this.props.history.push(`/lib/${this.props.match.params.libId}/`);
+            // And make sure the list of blocks in the library is refreshed:
+            this.props.onBlockChanged();
+        }
     }
 }
 export const BlockPage = withRouter(_BlockPage);

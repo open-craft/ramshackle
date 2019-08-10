@@ -84,6 +84,11 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
                     } });
             });
         }
+        deleteLibraryBlock(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                yield this._call(`/blocks/${id}/`, { method: 'DELETE' });
+            });
+        }
         /** Get the OLX source code of the given block */
         getLibraryBlockOlx(id) {
             return __awaiter(this, void 0, void 0, function* () {
@@ -93,7 +98,7 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
         /** Set the OLX source code of the given block */
         setLibraryBlockOlx(id, newOlx) {
             return __awaiter(this, void 0, void 0, function* () {
-                return (yield this._call(`/blocks/${id}/olx/`, { method: 'POST', data: { olx: newOlx } }));
+                yield this._call(`/blocks/${id}/olx/`, { method: 'POST', data: { olx: newOlx } });
             });
         }
         /** Commit draft changes to the given block and its descendants */
@@ -794,6 +799,15 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
             this.handleDiscardChanges = () => __awaiter(this, void 0, void 0, function* () {
                 alert("Discarding changes is not yet implemented in Blockstore.");
             });
+            this.handleDeleteBlock = () => __awaiter(this, void 0, void 0, function* () {
+                if (confirm("Are you sure you want to delete this XBlock? There is no undo.")) {
+                    yield LibraryClient_3.libClient.deleteLibraryBlock(this.props.id);
+                    // Leave this page:
+                    this.props.history.push(`/lib/${this.props.match.params.libId}/`);
+                    // And make sure the list of blocks in the library is refreshed:
+                    this.props.onBlockChanged();
+                }
+            });
         }
         render() {
             return React.createElement(React.Fragment, null,
@@ -828,7 +842,10 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                                     React.createElement("button", { onClick: this.handleDiscardChanges, className: "btn btn-outline-danger mb-2 mr-2", disabled: !this.props.has_unpublished_changes }, "Discard Changes"),
                                     this.props.has_unpublished_changes ? "Discarding changes is not yet implemented in Blockstore." : "No changes to publish.",
                                     React.createElement("br", null),
-                                    React.createElement("br", null))),
+                                    React.createElement("br", null)),
+                                React.createElement("section", null,
+                                    React.createElement("h1", null, "Delete"),
+                                    React.createElement("button", { onClick: this.handleDeleteBlock, className: "btn btn-outline-danger mb-2 mr-2" }, "Delete this XBlock"))),
                             React.createElement(react_router_dom_1.Route, null, "Invalid tab / URL.")))));
         }
         get baseHref() {

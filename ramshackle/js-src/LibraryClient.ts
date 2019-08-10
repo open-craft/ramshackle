@@ -105,6 +105,10 @@ class LibraryClient {
         }});
     }
 
+    async deleteLibraryBlock(id: string): Promise<void> {
+        await this._call(`/blocks/${id}/`, {method: 'DELETE'});
+    }
+
     /** Get the OLX source code of the given block */
     async getLibraryBlockOlx(id: string): Promise<string> {
         return (await this._call(`/blocks/${id}/olx/`)).olx;
@@ -112,7 +116,7 @@ class LibraryClient {
 
     /** Set the OLX source code of the given block */
     async setLibraryBlockOlx(id: string, newOlx: string): Promise<void> {
-        return (await this._call(`/blocks/${id}/olx/`, {method: 'POST', data: {olx: newOlx}}));
+        await this._call(`/blocks/${id}/olx/`, {method: 'POST', data: {olx: newOlx}});
     }
 
     /** Commit draft changes to the given block and its descendants */
