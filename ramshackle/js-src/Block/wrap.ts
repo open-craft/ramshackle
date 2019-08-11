@@ -46,9 +46,6 @@ export function wrapBlockHtmlForIFrame(html: string, jsUrls: string[], cssUrls: 
             <script type="text/javascript" src="${lmsBaseUrl}/static/common/js/vendor/underscore.js"><\/script>
             <!-- The video XBlock depends on jquery-cookie -->
             <script type="text/javascript" src="${lmsBaseUrl}/static/js/vendor/jquery.cookie.js"><\/script>
-            <!-- The video XBlock has an undeclared dependency on edX HTML Utils -->
-            <script type="text/javascript" src="${lmsBaseUrl}/static/edx-ui-toolkit/js/utils/global-loader.js"><\/script>
-            <script type="text/javascript" src="${lmsBaseUrl}/static/edx-ui-toolkit/js/utils/html-utils.js"><\/script>
             <!--The Video XBlock has an undeclared dependency on 'Logger' -->
             <script>
                 window.Logger = { log: function() { } };
@@ -62,9 +59,11 @@ export function wrapBlockHtmlForIFrame(html: string, jsUrls: string[], cssUrls: 
                     require.config({
                         baseUrl: "${lmsBaseUrl}/static/",
                         paths: {
+                            accessibility: 'js/src/accessibility_tools',
                             draggabilly: 'js/vendor/draggabilly',
                             hls: 'common/js/vendor/hls',
                             moment: 'common/js/vendor/moment-with-locales',
+                            HtmlUtils: 'edx-ui-toolkit/js/utils/html-utils',
                         },
                     });
                     define('gettext', [], function() { return window.gettext; });
@@ -72,6 +71,19 @@ export function wrapBlockHtmlForIFrame(html: string, jsUrls: string[], cssUrls: 
                     define('jquery-migrate', [], function() { return window.jQuery; });
                     define('underscore', [], function() { return window._; });
                 }).call(this, require || RequireJS.require, define || RequireJS.define);
+            <\/script>
+            <!-- edX HTML Utils requires GlobalLoader -->
+            <script type="text/javascript" src="${lmsBaseUrl}/static/edx-ui-toolkit/js/utils/global-loader.js"><\/script>
+            <script>
+            // The video XBlock has an undeclared dependency on edX HTML Utils
+            RequireJS.require(['HtmlUtils'], function (HtmlUtils) {
+                window.edx.HtmlUtils = HtmlUtils;
+                // The problem XBlock depends on window.SR, though 'accessibility_tools' has an undeclared dependency on HtmlUtils:
+                RequireJS.require(['accessibility']);
+            });
+            RequireJS.require(['edx-ui-toolkit/js/utils/string-utils'], function (StringUtils) {
+                window.edx.StringUtils = StringUtils;
+            });
             <\/script>
             <!-- 
                 commons.js: this file produced by webpack contains many shared chunks of code.
