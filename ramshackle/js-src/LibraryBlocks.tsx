@@ -45,11 +45,6 @@ export class _LibraryBlocks extends React.PureComponent<Props, State> {
                                 <div className="card-footer">
                                     <Link to={`/lib/${this.props.libraryId}/blocks/${block.id}`} className="btn btn-sm btn-outline-primary mr-2">View</Link>
                                     <Link to={`/lib/${this.props.libraryId}/blocks/${block.id}/edit`} className="btn btn-sm btn-outline-secondary mr-2">Edit</Link>
-                                    {
-                                        block.has_unpublished_changes ?
-                                            <button onClick={() => {this.handlePublishBlock(block.id)}} className="btn btn-sm btn-outline-success mr-2" disabled={true} title="Publishing specific blocks not implemented yet">Publish</button>
-                                        : null
-                                    }
                                 </div>
                             </div>
                         </div>
@@ -89,13 +84,6 @@ export class _LibraryBlocks extends React.PureComponent<Props, State> {
         const data = await libClient.createLibraryBlock(this.props.libraryId, this.state.newBlockType, this.state.newBlockSlug);
         this.props.history.push(`/lib/${this.props.libraryId}/blocks/${data.id}`);
     }
-
-    handlePublishBlock = async (blockId: string) => {
-        event.preventDefault();
-        // Publishing changes to individual blocks is not yet implemented.
-        //await libClient.commitLibraryBlock(blockId);
-        //this.props.onLibraryChanged();
-    } 
 }
 export const LibraryBlocks = withRouter(_LibraryBlocks);
 

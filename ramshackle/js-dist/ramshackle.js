@@ -848,14 +848,7 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                                 React.createElement(BlockOlx_1.BlockOlxWrapper, { blockId: this.props.id, onBlockChanged: this.props.onBlockChanged })),
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.props.match.path}/actions` },
                                 React.createElement("section", null,
-                                    React.createElement("h1", null, "Publish Changes"),
-                                    React.createElement("button", { className: "btn btn-success mb-2 mr-2", disabled: true }, "Publish Changes"),
-                                    React.createElement("button", { className: "btn btn-outline-danger mb-2 mr-2", disabled: true }, "Discard Changes"),
-                                    this.props.has_unpublished_changes ? "Publishing/discarding changes to specific blocks is not yet implemented in Blockstore." : "No changes to publish.",
-                                    React.createElement("br", null),
-                                    React.createElement("br", null)),
-                                React.createElement("section", null,
-                                    React.createElement("h1", null, "Delete"),
+                                    React.createElement("h1", null, "Actions"),
                                     React.createElement("button", { onClick: this.handleDeleteBlock, className: "btn btn-outline-danger mb-2 mr-2" }, "Delete this XBlock"))),
                             React.createElement(react_router_dom_1.Route, null, "Invalid tab / URL.")))));
         }
@@ -917,12 +910,6 @@ define("LibraryBlocks", ["require", "exports", "react", "react-router-dom", "Lib
                 const data = yield LibraryClient_4.libClient.createLibraryBlock(this.props.libraryId, this.state.newBlockType, this.state.newBlockSlug);
                 this.props.history.push(`/lib/${this.props.libraryId}/blocks/${data.id}`);
             });
-            this.handlePublishBlock = (blockId) => __awaiter(this, void 0, void 0, function* () {
-                event.preventDefault();
-                // Publishing changes to individual blocks is not yet implemented.
-                //await libClient.commitLibraryBlock(blockId);
-                //this.props.onLibraryChanged();
-            });
             this.state = { newBlockType: 'html', newBlockSlug: '' };
         }
         render() {
@@ -939,10 +926,7 @@ define("LibraryBlocks", ["require", "exports", "react", "react-router-dom", "Lib
                             block.has_unpublished_changes ? React.createElement("p", { className: "badge badge-info" }, "Unpublished Changes") : null),
                         React.createElement("div", { className: "card-footer" },
                             React.createElement(react_router_dom_2.Link, { to: `/lib/${this.props.libraryId}/blocks/${block.id}`, className: "btn btn-sm btn-outline-primary mr-2" }, "View"),
-                            React.createElement(react_router_dom_2.Link, { to: `/lib/${this.props.libraryId}/blocks/${block.id}/edit`, className: "btn btn-sm btn-outline-secondary mr-2" }, "Edit"),
-                            block.has_unpublished_changes ?
-                                React.createElement("button", { onClick: () => { this.handlePublishBlock(block.id); }, className: "btn btn-sm btn-outline-success mr-2", disabled: true, title: "Publishing specific blocks not implemented yet" }, "Publish")
-                                : null)))))),
+                            React.createElement(react_router_dom_2.Link, { to: `/lib/${this.props.libraryId}/blocks/${block.id}/edit`, className: "btn btn-sm btn-outline-secondary mr-2" }, "Edit"))))))),
                 React.createElement("h2", null, "Add a new block"),
                 React.createElement("form", null,
                     React.createElement("div", { className: "form-group" },

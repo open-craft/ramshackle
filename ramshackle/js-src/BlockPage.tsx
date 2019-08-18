@@ -53,15 +53,7 @@ class _BlockPage extends React.PureComponent<BlockPageProps> {
                         </Route>
                         <Route exact path={`${this.props.match.path}/actions`}>
                             <section>
-                                <h1>Publish Changes</h1>
-                                <button className="btn btn-success mb-2 mr-2" disabled={true}>Publish Changes</button>
-                                <button className="btn btn-outline-danger mb-2 mr-2" disabled={true}>Discard Changes</button>
-                                {this.props.has_unpublished_changes ? "Publishing/discarding changes to specific blocks is not yet implemented in Blockstore." : "No changes to publish."}
-                                <br />
-                                <br />
-                            </section>
-                            <section>
-                                <h1>Delete</h1>
+                                <h1>Actions</h1>
                                 <button onClick={this.handleDeleteBlock} className="btn btn-outline-danger mb-2 mr-2">Delete this XBlock</button>
                             </section>
                         </Route>
