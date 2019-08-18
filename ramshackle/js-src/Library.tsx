@@ -26,10 +26,11 @@ export class _Library extends React.PureComponent<LibraryProps> {
                 <h1>{this.props.title}</h1>
                 <p>Version: {this.props.version}</p>
                 <p>Description: {this.props.description}</p>
+                <p>Bundle: {this.props.bundle_uuid}</p>
                 <p>
-                    Bundle: {this.props.bundle_uuid} {' '}
-                    (<a href={`http://localhost:18250/admin/bundles/bundle/?uuid=${this.props.bundle_uuid}`}>Blockstore admin</a>)
-                    (<a href={`http://localhost:18250/api/v1/bundles/${this.props.bundle_uuid}`}>Blockstore API</a>)
+                    (<a href={`http://localhost:18010/admin/content_libraries/contentlibrary/${this.props.slug}/change/`}>Library Django admin</a>)
+                    (<a href={`http://localhost:18250/admin/bundles/bundle/?uuid=${this.props.bundle_uuid}`}>Bundle Django admin</a>)
+                    (<a href={`http://localhost:18250/api/v1/bundles/${this.props.bundle_uuid}`}>Bundle API</a>)
                 </p>
                 {
                     this.props.has_unpublished_changes ? <>
