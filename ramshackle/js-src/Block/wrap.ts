@@ -259,7 +259,7 @@ function blockFrameJS() {
         }
 
         const version = element.getAttribute('data-runtime-version');
-        if (version !== '1') {
+        if (version != null && version !== '1') {
             throw new Error('Unsupported XBlock runtime version requirement.');
         }
 

@@ -515,7 +515,7 @@ define("Block/wrap", ["require", "exports"], function (require, exports) {
                 throw new Error('XBlock is missing a usage ID attribute on its root HTML node.');
             }
             const version = element.getAttribute('data-runtime-version');
-            if (version !== '1') {
+            if (version != null && version !== '1') {
                 throw new Error('Unsupported XBlock runtime version requirement.');
             }
             // Recursively initialize any children first:
