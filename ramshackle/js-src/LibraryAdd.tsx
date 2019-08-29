@@ -8,6 +8,7 @@ export class LibraryAddForm extends React.PureComponent<RouteComponentProps, Lib
     constructor(props) {
         super(props);
         this.state = {
+            org: '',
             slug: '',
             collection_uuid: '',
             title: '',
@@ -18,6 +19,11 @@ export class LibraryAddForm extends React.PureComponent<RouteComponentProps, Lib
         return <>
             <h1>Add a new content library</h1>
             <form>
+                <div className="form-group">
+                    <label htmlFor="newLibraryOrg">Organization ID</label>
+                    <input type="text" className="form-control" id="newLibraryOrg" placeholder="edX" value={this.state.org} onChange={this.handleChangeOrg}/>
+                    <small>You can see/edit the organizations <a href="http://localhost:18000/admin/organizations/organization/">via the Django admin</a> or <a href="http://localhost:18000/api/organizations/v0/organizations/">API</a>. Enter the "Short Name" here.</small>
+                </div>
                 <div className="form-group">
                     <label htmlFor="newLibrarySlug">Slug</label>
                     <input type="text" className="form-control" id="newLibrarySlug" placeholder="my-lib" value={this.state.slug} onChange={this.handleChangeSlug}/>
@@ -42,6 +48,7 @@ export class LibraryAddForm extends React.PureComponent<RouteComponentProps, Lib
     }
 
     // Event handlers:
+    handleChangeOrg = (event: React.ChangeEvent<HTMLInputElement>) => { this.setState({org: event.target.value}); }
     handleChangeSlug = (event: React.ChangeEvent<HTMLInputElement>) => { this.setState({slug: event.target.value}); }
     handleChangeTitle = (event: React.ChangeEvent<HTMLInputElement>) => { this.setState({title: event.target.value}); }
     handleChangeDescription = (event: React.ChangeEvent<HTMLInputElement>) => { this.setState({description: event.target.value}); }

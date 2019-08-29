@@ -1076,6 +1076,7 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
         constructor(props) {
             super(props);
             // Event handlers:
+            this.handleChangeOrg = (event) => { this.setState({ org: event.target.value }); };
             this.handleChangeSlug = (event) => { this.setState({ slug: event.target.value }); };
             this.handleChangeTitle = (event) => { this.setState({ title: event.target.value }); };
             this.handleChangeDescription = (event) => { this.setState({ description: event.target.value }); };
@@ -1086,6 +1087,7 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
                 this.props.history.push(`/lib/${newLibrary.id}`);
             });
             this.state = {
+                org: '',
                 slug: '',
                 collection_uuid: '',
                 title: '',
@@ -1096,6 +1098,15 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
             return React.createElement(React.Fragment, null,
                 React.createElement("h1", null, "Add a new content library"),
                 React.createElement("form", null,
+                    React.createElement("div", { className: "form-group" },
+                        React.createElement("label", { htmlFor: "newLibraryOrg" }, "Organization ID"),
+                        React.createElement("input", { type: "text", className: "form-control", id: "newLibraryOrg", placeholder: "edX", value: this.state.org, onChange: this.handleChangeOrg }),
+                        React.createElement("small", null,
+                            "You can see/edit the organizations ",
+                            React.createElement("a", { href: "http://localhost:18000/admin/organizations/organization/" }, "via the Django admin"),
+                            " or ",
+                            React.createElement("a", { href: "http://localhost:18000/api/organizations/v0/organizations/" }, "API"),
+                            ". Enter the \"Short Name\" here.")),
                     React.createElement("div", { className: "form-group" },
                         React.createElement("label", { htmlFor: "newLibrarySlug" }, "Slug"),
                         React.createElement("input", { type: "text", className: "form-control", id: "newLibrarySlug", placeholder: "my-lib", value: this.state.slug, onChange: this.handleChangeSlug })),

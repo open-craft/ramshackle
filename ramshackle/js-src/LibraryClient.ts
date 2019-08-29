@@ -8,6 +8,7 @@ interface RequestArgs extends FetchOptions {
  */
 export interface LibraryMetadata {
     id: string;
+    org: string;
     slug: string;
     bundle_uuid: string;
     title: string;
@@ -16,7 +17,7 @@ export interface LibraryMetadata {
     has_unpublished_changes: boolean;
     has_unpublished_deletes: boolean;
 }
-export type LibraryCreateData = Pick<LibraryMetadata, 'slug'|'title'|'description'>&{collection_uuid: string};
+export type LibraryCreateData = Pick<LibraryMetadata, 'org'|'slug'|'title'|'description'>&{collection_uuid: string};
 
 /**
  * Metadata about a content library XBlock
