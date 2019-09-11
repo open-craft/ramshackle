@@ -6,6 +6,17 @@ with Blockstore-based content libraries. This is for developers only and deliber
 has a basic UI. It is not intended to evolve into an end-user tool, but to be replaced
 by one.
 
+Screenshots
+-----------
+
+.. image:: docs/screenshot1.png
+
+.. image:: docs/screenshot2.png
+
+.. image:: docs/screenshot3.png
+
+.. image:: docs/screenshot4.png
+
 Setup Instructions
 ------------------
 
