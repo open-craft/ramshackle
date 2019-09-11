@@ -3,6 +3,8 @@ interface RequestArgs extends FetchOptions {
     data?: any;
 }
 
+export const LMS_BASE_URL = 'http://localhost:18000';
+
 /**
  * Metadata about a content library
  */
@@ -140,6 +142,12 @@ export const libClient = new LibraryClient();
  */
 class XBlockClient {
 
+    public readonly baseUrl: string;
+
+    constructor(baseUrl = '') {
+        this.baseUrl = baseUrl;  // Set to the base URL of either the LMS or Studio
+    }
+
     async _call(url: string, args: RequestArgs = {}): Promise<any> {
         if (args.data) {
             args.body = JSON.stringify(args.data);
@@ -154,7 +162,7 @@ class XBlockClient {
             },
             ...args,
         };
-        const result = await fetch(`/api/xblock/v2${url}`, combinedArgs);
+        const result = await fetch(`${this.baseUrl}/api/xblock/v2${url}`, combinedArgs);
         if (result.status < 200 || result.status >= 300) {
             try {
                 console.error(await result.json());
@@ -177,7 +185,8 @@ class XBlockClient {
         return result.handler_url;
     }
 }
-export const xblockClient = new XBlockClient();
+export const studioXBlockClient = new XBlockClient();
+export const lmsXBlockClient = new XBlockClient(LMS_BASE_URL);
 
 /**
  * JS Cookie parser from Django docs

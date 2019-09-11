@@ -20,6 +20,7 @@ var __rest = (this && this.__rest) || function (s, e) {
 define("LibraryClient", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    exports.LMS_BASE_URL = 'http://localhost:18000';
     /**
      * A simple API client for the Open edX content libraries API
      */
@@ -119,6 +120,9 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
      * A simple API client for the Open edX XBlock API
      */
     class XBlockClient {
+        constructor(baseUrl = '') {
+            this.baseUrl = baseUrl; // Set to the base URL of either the LMS or Studio
+        }
         _call(url, args = {}) {
             return __awaiter(this, void 0, void 0, function* () {
                 if (args.data) {
@@ -129,7 +133,7 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken'),
                     } }, args);
-                const result = yield fetch(`/api/xblock/v2${url}`, combinedArgs);
+                const result = yield fetch(`${this.baseUrl}/api/xblock/v2${url}`, combinedArgs);
                 if (result.status < 200 || result.status >= 300) {
                     try {
                         console.error(yield result.json());
@@ -157,7 +161,8 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
             });
         }
     }
-    exports.xblockClient = new XBlockClient();
+    exports.studioXBlockClient = new XBlockClient();
+    exports.lmsXBlockClient = new XBlockClient(exports.LMS_BASE_URL);
     /**
      * JS Cookie parser from Django docs
      * https://docs.djangoproject.com/en/2.2/ref/csrf/#acquiring-the-token-if-csrf-use-sessions-and-csrf-cookie-httponly-are-false
@@ -640,9 +645,7 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
     // The xblock-bootstrap.html file must be hosted on a completely unique domain name.
     // The domain below may be used for development but not production.
     const SECURE_ORIGIN_XBLOCK_BOOTSTRAP_HTML_URL = '//d3749cj02gkez2.cloudfront.net/xblock-bootstrap.html';
-    // URLs to the LMS and CMS. These are required because XBlocks have a _lot_ of messy undeclared
-    // dependencies on certain JS/CSS in the global scope.
-    const LMS_BASE_URL = 'http://localhost:18000';
+    ;
     /**
      * React component that displays an XBlock in a sandboxed IFrame.
      *
@@ -717,9 +720,9 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
             return __awaiter(this, void 0, void 0, function* () {
                 try {
                     // First load the XBlock fragment data:
-                    const data = yield LibraryClient_2.xblockClient.renderView(this.props.usageKey, this.props.viewName);
+                    const data = yield this.xblockClient.renderView(this.props.usageKey, this.props.viewName);
                     const urlResources = data.resources.filter((r) => r.kind === 'url');
-                    const html = wrap_1.wrapBlockHtmlForIFrame(data.content, urlResources.filter((r) => r.mimetype === 'application/javascript').map((r) => r.data), urlResources.filter((r) => r.mimetype === 'text/css').map((r) => r.data), LMS_BASE_URL);
+                    const html = wrap_1.wrapBlockHtmlForIFrame(data.content, urlResources.filter((r) => r.mimetype === 'application/javascript').map((r) => r.data), urlResources.filter((r) => r.mimetype === 'text/css').map((r) => r.data), LibraryClient_2.LMS_BASE_URL);
                     // Load the XBlock HTML into the IFrame:
                     this.setState({ initialHtml: html, loadingState: 1 /* Ready */ });
                 }
@@ -750,7 +753,9 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
                             minHeight: '200px',
                             border: '0 none',
                             backgroundColor: 'white',
-                        }, sandbox: [
+                        }, 
+                        // allowing 'autoplay' is required to allow the video XBlock to control the YouTube iframe it has.
+                        allow: 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture', sandbox: [
                             'allow-forms',
                             'allow-modals',
                             'allow-popups',
@@ -775,12 +780,16 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
             return __awaiter(this, void 0, void 0, function* () {
                 // We request the URL of a fake handler called 'handler_name' and then
                 // substitute the name of the real handler later, without any further calls.
-                return yield LibraryClient_2.xblockClient.getHandlerUrl(usageKey, 'handler_name');
+                return yield this.xblockClient.getHandlerUrl(usageKey, 'handler_name');
             });
+        }
+        get xblockClient() {
+            return this.props.system === 1 /* Studio */ ? LibraryClient_2.studioXBlockClient : LibraryClient_2.lmsXBlockClient;
         }
     }
     Block.defaultProps = {
         viewName: 'student_view',
+        system: 1 /* Studio */,
     };
     exports.Block = Block;
 });
@@ -835,7 +844,9 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                             React.createElement("li", { className: "nav-item" },
                                 React.createElement(react_router_dom_1.NavLink, { to: `${this.baseHref}/source`, className: 'nav-link', activeClassName: "active" }, "Source")),
                             React.createElement("li", { className: "nav-item" },
-                                React.createElement(react_router_dom_1.NavLink, { to: `${this.baseHref}/actions`, className: 'nav-link', activeClassName: "active" }, "Actions")))),
+                                React.createElement(react_router_dom_1.NavLink, { to: `${this.baseHref}/actions`, className: 'nav-link', activeClassName: "active" }, "Actions")),
+                            React.createElement("li", { className: "nav-item" },
+                                React.createElement(react_router_dom_1.NavLink, { to: `${this.baseHref}/learn`, className: 'nav-link', activeClassName: "active" }, "Learn")))),
                     React.createElement("div", { className: "card-body" },
                         React.createElement(react_router_dom_1.Switch, null,
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.props.match.path}` },
@@ -850,6 +861,9 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                                 React.createElement("section", null,
                                     React.createElement("h1", null, "Actions"),
                                     React.createElement("button", { onClick: this.handleDeleteBlock, className: "btn btn-outline-danger mb-2 mr-2" }, "Delete this XBlock"))),
+                            React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.props.match.path}/learn` },
+                                React.createElement("p", null, "This tab uses the LMS APIs so it shows the published version only and will save user state."),
+                                React.createElement(Block_1.Block, { usageKey: this.props.id, system: 0 /* LMS */ })),
                             React.createElement(react_router_dom_1.Route, null, "Invalid tab / URL.")))));
         }
         get baseHref() {

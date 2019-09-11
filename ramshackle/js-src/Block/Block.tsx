@@ -1,15 +1,12 @@
 import * as React from 'react';
 
-import { xblockClient } from '../LibraryClient';
+import { studioXBlockClient, lmsXBlockClient, LMS_BASE_URL } from '../LibraryClient';
 import {LoadingStatus, LoadingWrapper} from '../LoadingWrapper';
 import { wrapBlockHtmlForIFrame } from './wrap';
 
 // The xblock-bootstrap.html file must be hosted on a completely unique domain name.
 // The domain below may be used for development but not production.
 const SECURE_ORIGIN_XBLOCK_BOOTSTRAP_HTML_URL = '//d3749cj02gkez2.cloudfront.net/xblock-bootstrap.html';
-// URLs to the LMS and CMS. These are required because XBlocks have a _lot_ of messy undeclared
-// dependencies on certain JS/CSS in the global scope.
-const LMS_BASE_URL = 'http://localhost:18000';
 
 /**
  * Event signals that may be sent by XBlocks to the parent application.
@@ -22,9 +19,15 @@ export type XBlockNotification = (
     | {eventType: 'cancel'}
 );
 
+export const enum System {
+    LMS,
+    Studio
+};
+
 interface BlockProps {
     usageKey: string;
     viewName: string;
+    system: System;
     onNotification?: (event: XBlockNotification) => void;
 }
 
@@ -47,6 +50,7 @@ export class Block extends React.Component<BlockProps, BlockState> {
 
     static defaultProps = {
         viewName: 'student_view',
+        system: System.Studio,
     };
 
     private iframeRef: React.RefObject<HTMLIFrameElement>;
@@ -86,7 +90,7 @@ export class Block extends React.Component<BlockProps, BlockState> {
     private async loadXBlockHtml() {
         try {
             // First load the XBlock fragment data:
-            const data = await xblockClient.renderView(this.props.usageKey, this.props.viewName);
+            const data = await this.xblockClient.renderView(this.props.usageKey, this.props.viewName);
             const urlResources = data.resources.filter((r) => r.kind === 'url');
             const html = wrapBlockHtmlForIFrame(
                 data.content,
@@ -128,6 +132,8 @@ export class Block extends React.Component<BlockProps, BlockState> {
                         border: '0 none',
                         backgroundColor: 'white',
                     }}
+                    // allowing 'autoplay' is required to allow the video XBlock to control the YouTube iframe it has.
+                    allow='accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture'
                     sandbox={[
                         'allow-forms',
                         'allow-modals',
@@ -188,6 +194,10 @@ export class Block extends React.Component<BlockProps, BlockState> {
     private async getSecureHandlerUrl(usageKey: string) {
         // We request the URL of a fake handler called 'handler_name' and then
         // substitute the name of the real handler later, without any further calls.
-        return await xblockClient.getHandlerUrl(usageKey, 'handler_name');
+        return await this.xblockClient.getHandlerUrl(usageKey, 'handler_name');
+    }
+
+    private get xblockClient() {
+        return this.props.system === System.Studio ? studioXBlockClient : lmsXBlockClient;
     }
 }

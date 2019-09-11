@@ -3,7 +3,7 @@ import { NavLink, Switch, Route, withRouter, RouteComponentProps } from "react-r
 
 import {libClient, LibraryBlockMetadata} from './LibraryClient';
 import {LoadingStatus, LoadingWrapper} from './LoadingWrapper';
-import { Block, XBlockNotification } from "./Block/Block";
+import { Block, XBlockNotification, System } from "./Block/Block";
 import { BlockOlxWrapper } from "./BlockOlx";
 
 type RouteProps = RouteComponentProps<{libId: string, blockId: string}>;
@@ -35,6 +35,9 @@ class _BlockPage extends React.PureComponent<BlockPageProps> {
                         <li className="nav-item">
                             <NavLink to={`${this.baseHref}/actions`} className='nav-link' activeClassName="active">Actions</NavLink>
                         </li>
+                        <li className="nav-item">
+                            <NavLink to={`${this.baseHref}/learn`} className='nav-link' activeClassName="active">Learn</NavLink>
+                        </li>
                     </ul>
                 </div>
                 <div className="card-body">
@@ -56,6 +59,10 @@ class _BlockPage extends React.PureComponent<BlockPageProps> {
                                 <h1>Actions</h1>
                                 <button onClick={this.handleDeleteBlock} className="btn btn-outline-danger mb-2 mr-2">Delete this XBlock</button>
                             </section>
+                        </Route>
+                        <Route exact path={`${this.props.match.path}/learn`}>
+                            <p>This tab uses the LMS APIs so it shows the published version only and will save user state.</p>
+                            <Block usageKey={this.props.id} system={System.LMS} />
                         </Route>
                         <Route>Invalid tab / URL.</Route>
                     </Switch>
