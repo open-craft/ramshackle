@@ -18,7 +18,7 @@ its content with that HTML.
 </head>
 <body>
     <script>
-        const uniqueKeyPrefix = `k${+Date.now()}-${Math.floor(Math.random() * 1e10)}-`;
+        const uniqueKeyPrefix = "k" + +Date.now() + "-" + Math.floor(Math.random() * 1e10) + "-";
         var messageCount = 0;
         function postMessageToParent(messageData, callback) {
             const messageReplyKey = uniqueKeyPrefix + (messageCount++);
@@ -34,13 +34,32 @@ its content with that HTML.
             }
             window.parent.postMessage(messageData, '*');
         }
-        // Request the HTML from the parent and then completely replace this entire
-        // HTML document with the resulting HTML
-        postMessageToParent({method: 'bootstrap'}, function(data) {
-            document.open();
-            document.write(data.initialHtml);
-            document.close();
-        });
+        /**
+         * Replace the entire current document with a new document that has the specified HTML.
+         */
+        function replaceAllHtml(newHtml) {
+            if(navigator.userAgent.indexOf('MSIE') !==-1 || navigator.appVersion.indexOf('Trident/') > -1) {
+                // Can't use document.open/close on IE11, it replaces this with an empty page.
+                // Thank god for StackOverflow and this crazy-ass hack that somehow works.
+                // https://stackoverflow.com/a/18262905
+                window.contents = newHtml;
+                location.replace('javascript:window["contents"]');
+            } else {
+                document.open();
+                document.write(newHtml);
+                document.close();
+            }
+        }
+
+        if (window.parent === window) {
+            document.write("This XBlock sandbox launch tool must be embedded in an IFrame.");
+        } else {
+            // Request the HTML from the parent and then completely replace this entire
+            // HTML document with the resulting HTML
+            postMessageToParent({method: 'bootstrap'}, function(data) {
+                replaceAllHtml(data.initialHtml || 'Error: Missing XBlock HTML.');
+            });
+        }
     </script>
 </body>
 </html>
