@@ -20,7 +20,10 @@ var __rest = (this && this.__rest) || function (s, e) {
 define("LibraryClient", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.LMS_BASE_URL = 'http://localhost:18000';
+    exports.LMS_BASE_URL = window['ramshackle-config-lms-url'] || 'http://localhost:18000';
+    exports.STUDIO_BASE_URL = window['ramshackle-config-studio-url'] || '';
+    exports.STUDIO_LIBRARY_API_ROOT = exports.STUDIO_BASE_URL + '/api/libraries/v2';
+    exports.IS_REMOTE_SERVER = exports.STUDIO_LIBRARY_API_ROOT.includes('http');
     /**
      * A simple API client for the Open edX content libraries API
      */
@@ -33,9 +36,15 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
                 }
                 const combinedArgs = Object.assign({ method: 'GET', credentials: 'include', headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken'),
                     } }, args);
-                const result = yield fetch(`/api/libraries/v2${url}`, combinedArgs);
+                if (window['ramshackle-config-access-token']) {
+                    combinedArgs.headers['Authorization'] = `Bearer ${window['ramshackle-config-access-token']}`;
+                }
+                else {
+                    // For connecting to local Studio we need CSRF:
+                    combinedArgs.headers['X-CSRFToken'] = getCookie('csrftoken');
+                }
+                const result = yield fetch(`${exports.STUDIO_LIBRARY_API_ROOT}${url}`, combinedArgs);
                 if (result.status < 200 || result.status >= 300) {
                     try {
                         console.error(yield result.json());
@@ -48,6 +57,9 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
         }
         listLibraries() {
             return __awaiter(this, void 0, void 0, function* () {
+                if (exports.IS_REMOTE_SERVER) {
+                    return []; // Don't allow listing all libraries on a remote server
+                }
                 return this._call('/');
             });
         }
@@ -120,7 +132,7 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
      * A simple API client for the Open edX XBlock API
      */
     class XBlockClient {
-        constructor(baseUrl = '') {
+        constructor(baseUrl) {
             this.baseUrl = baseUrl; // Set to the base URL of either the LMS or Studio
         }
         _call(url, args = {}) {
@@ -131,8 +143,14 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
                 }
                 const combinedArgs = Object.assign({ method: 'GET', credentials: 'include', headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken'),
                     } }, args);
+                if (window['ramshackle-config-access-token']) {
+                    combinedArgs.headers['Authorization'] = `Bearer ${window['ramshackle-config-access-token']}`;
+                }
+                else {
+                    // For connecting to local Studio we need CSRF:
+                    combinedArgs.headers['X-CSRFToken'] = getCookie('csrftoken');
+                }
                 const result = yield fetch(`${this.baseUrl}/api/xblock/v2${url}`, combinedArgs);
                 if (result.status < 200 || result.status >= 300) {
                     try {
@@ -161,7 +179,7 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
             });
         }
     }
-    exports.studioXBlockClient = new XBlockClient();
+    exports.studioXBlockClient = new XBlockClient(exports.STUDIO_BASE_URL);
     exports.lmsXBlockClient = new XBlockClient(exports.LMS_BASE_URL);
     /**
      * JS Cookie parser from Django docs
@@ -1149,8 +1167,22 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
 define("LibraryList", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_5, LibraryClient_7, LoadingWrapper_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    class LibraryList extends React.PureComponent {
+    class _LibraryList extends React.PureComponent {
+        constructor() {
+            super(...arguments);
+            this.handleManualAccessButton = () => {
+                const libId = document.getElementById('library-manual-id-input').value;
+                this.props.history.push(`/lib/${libId}`);
+            };
+        }
         render() {
+            if (LibraryClient_7.IS_REMOTE_SERVER) {
+                return React.createElement(React.Fragment, null,
+                    React.createElement("h1", null, "Remote Content Libraries"),
+                    React.createElement("p", null, "You cannot list the libraries on a remote server. Enter a library ID to access it:"),
+                    React.createElement("input", { type: "text", id: "library-manual-id-input" }),
+                    React.createElement("button", { onClick: this.handleManualAccessButton }, "Access"));
+            }
             return React.createElement(React.Fragment, null,
                 React.createElement("h1", null, "All Content Libraries"),
                 React.createElement("p", null,
@@ -1162,7 +1194,7 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
                 React.createElement(react_router_dom_5.Link, { to: "/add/", className: "btn btn-primary" }, "Add New Library"));
         }
     }
-    exports.LibraryList = LibraryList;
+    exports.LibraryList = react_router_dom_5.withRouter(_LibraryList);
     class LibraryListWrapper extends React.PureComponent {
         constructor(props) {
             super(props);
@@ -1188,7 +1220,7 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
         }
         render() {
             return React.createElement(LoadingWrapper_6.LoadingWrapper, { status: this.state.status },
-                React.createElement(LibraryList, { libraries: this.state.libraryList }));
+                React.createElement(exports.LibraryList, { libraries: this.state.libraryList }));
         }
     }
     exports.LibraryListWrapper = LibraryListWrapper;

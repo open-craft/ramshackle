@@ -3,7 +3,10 @@ interface RequestArgs extends FetchOptions {
     data?: any;
 }
 
-export const LMS_BASE_URL = 'http://localhost:18000';
+export const LMS_BASE_URL = window['ramshackle-config-lms-url'] || 'http://localhost:18000';
+export const STUDIO_BASE_URL = window['ramshackle-config-studio-url'] || '';
+export const STUDIO_LIBRARY_API_ROOT = STUDIO_BASE_URL + '/api/libraries/v2';
+export const IS_REMOTE_SERVER = STUDIO_LIBRARY_API_ROOT.includes('http');
 
 /**
  * Metadata about a content library
@@ -64,11 +67,16 @@ class LibraryClient {
             credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken'),
             },
             ...args,
         };
-        const result = await fetch(`/api/libraries/v2${url}`, combinedArgs);
+        if (window['ramshackle-config-access-token']) {
+            combinedArgs.headers['Authorization'] = `Bearer ${window['ramshackle-config-access-token']}`;
+        } else {
+            // For connecting to local Studio we need CSRF:
+            combinedArgs.headers['X-CSRFToken'] = getCookie('csrftoken');
+        }
+        const result = await fetch(`${STUDIO_LIBRARY_API_ROOT}${url}`, combinedArgs);
         if (result.status < 200 || result.status >= 300) {
             try {
                 console.error(await result.json());
@@ -79,6 +87,9 @@ class LibraryClient {
     }
 
     async listLibraries(): Promise<LibraryMetadata[]> {
+        if (IS_REMOTE_SERVER) {
+            return []; // Don't allow listing all libraries on a remote server
+        }
         return this._call('/');
     }
 
@@ -144,7 +155,7 @@ class XBlockClient {
 
     public readonly baseUrl: string;
 
-    constructor(baseUrl = '') {
+    constructor(baseUrl: string) {
         this.baseUrl = baseUrl;  // Set to the base URL of either the LMS or Studio
     }
 
@@ -158,10 +169,15 @@ class XBlockClient {
             credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken'),
             },
             ...args,
         };
+        if (window['ramshackle-config-access-token']) {
+            combinedArgs.headers['Authorization'] = `Bearer ${window['ramshackle-config-access-token']}`;
+        } else {
+            // For connecting to local Studio we need CSRF:
+            combinedArgs.headers['X-CSRFToken'] = getCookie('csrftoken');
+        }
         const result = await fetch(`${this.baseUrl}/api/xblock/v2${url}`, combinedArgs);
         if (result.status < 200 || result.status >= 300) {
             try {
@@ -185,7 +201,7 @@ class XBlockClient {
         return result.handler_url;
     }
 }
-export const studioXBlockClient = new XBlockClient();
+export const studioXBlockClient = new XBlockClient(STUDIO_BASE_URL);
 export const lmsXBlockClient = new XBlockClient(LMS_BASE_URL);
 
 /**

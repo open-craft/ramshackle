@@ -1,0 +1,83 @@
+<!--
+Use this file if you want to run Ramshackle to connect to an external Open edX
+instance that doesn't have it installed as a plugin.
+-->
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <meta name="path_prefix" content="">
+        <title>Ramshackle</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    </head>
+    <body>
+        <div class="content-wrapper container-fluid">
+            <div id="ramshackle-root">
+                <h1>Remote Ramshackle</h1>
+                <p>Studio URL:</p>
+                <input id="studio-url" type="text" placeholder="https://studio.example.com" style="width: 30em; display: block;" />
+                <p>LMS URL:</p>
+                <input id="lms-url" type="text" placeholder="https://courses.example.com" style="width: 30em; display: block;" />
+                <p>OAuth2 Application Auth ID:</p>
+                <input id="oauth2-id" type="text" placeholder="12345" style="width: 30em; display: block;" />
+                <p>OAuth2 Application Auth Secret:</p>
+                <input id="oauth2-key" type="text" placeholder="ABCDEF" style="width: 30em; display: block;" />
+                <button class="btn btn-primary" id="launch-ramshackle" style="font-weight: bold;">Launch</button>
+            </div>
+        </div>
+        <script>
+            const myRequire = requirejs.config({
+                context: 'ramshackle', // Namespace these modules to not conflict with existing modules in edxapp
+                paths: {
+                    'ramshackle': './js-dist/ramshackle',
+                    'react': 'https://unpkg.com/react@16/umd/react.development',
+                    'react-dom': 'https://unpkg.com/react-dom@16/umd/react-dom.development',
+                    'react-router-dom': 'https://unpkg.com/react-router-dom@5/umd/react-router-dom.min',
+                },
+            });
+            document.addEventListener('DOMContentLoaded', () => {
+                const configElementIds = ['studio-url', 'lms-url', 'oauth2-id', 'oauth2-key'];
+                // Restore the last used config values from localstorage for convenience:
+                for (const fieldId of configElementIds) {
+                    const lastValue = localStorage.getItem(`last-${fieldId}`);
+                    if (lastValue) {
+                        document.querySelector(`#${fieldId}`).value = lastValue;
+                    }
+                }
+
+                // When the user clicks "launch":
+                document.querySelector('#launch-ramshackle').addEventListener('click', async () => {
+                    for (const fieldId of configElementIds) {
+                        let value = document.querySelector(`#${fieldId}`).value;
+                        if (fieldId.includes('url')) {
+                            // Trim trailing slashes from the URLs for consistency
+                            value = value.replace(/\/+$/, '');
+                        }
+                        // Record the last used values in localstorage for convenience
+                        localStorage.setItem(`last-${fieldId}`, value);
+                        // Pass the data on to Ramshackle via a global
+                        window[`ramshackle-config-${fieldId}`] = value;
+                    }
+                    // Fetch a bearer token from the LMS:
+                    const accessTokenUrl = `${window['ramshackle-config-lms-url']}/oauth2/access_token`;
+                    const formData = new URLSearchParams();
+                    formData.append('client_id', window['ramshackle-config-oauth2-id']);
+                    formData.append('client_secret', window['ramshackle-config-oauth2-key']);
+                    formData.append('grant_type', 'client_credentials');
+                    const result = await fetch(accessTokenUrl, {
+                        method: 'POST',
+                        cache: 'no-cache',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: formData,
+                    });
+                    window['ramshackle-config-access-token'] = (await result.json())['access_token'];
+                    console.log(window['ramshackle-config-access-token']);
+                    // Now launch:
+                    myRequire(['ramshackle'], () => {});
+                });
+            });
+        </script>
+    </body>
+</html>

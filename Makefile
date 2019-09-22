@@ -43,6 +43,12 @@ js:
 js-watch:
 	./node_modules/.bin/tsc --watch
 
+remote:
+	@echo "Connect to ramshackle at http://localhost:8000/ramshackle/"
+	@echo "You will sadly need to use"
+	@echo 'open -n -a /Applications/Google\ Chrome.app --args --user-data-dir="/tmp/insecure-chrome-session" --disable-web-security'
+	python -m SimpleHTTPServer
+
 quality: ## check coding style with pycodestyle and pylint
 	pylint ramshackle $(PROJECT_ROOT)setup.py
 	pylint --py3k ramshackle $(PROJECT_ROOT)setup.py
