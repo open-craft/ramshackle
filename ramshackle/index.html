@@ -32,9 +32,11 @@ instance that doesn't have it installed as a plugin.
                 context: 'ramshackle', // Namespace these modules to not conflict with existing modules in edxapp
                 paths: {
                     'ramshackle': './js-dist/ramshackle',
+                    'prop-types': 'https://unpkg.com/prop-types@15/prop-types.min',
                     'react': 'https://unpkg.com/react@16/umd/react.development',
                     'react-dom': 'https://unpkg.com/react-dom@16/umd/react-dom.development',
                     'react-router-dom': 'https://unpkg.com/react-router-dom@5/umd/react-router-dom.min',
+                    'react-dropzone': 'https://unpkg.com/react-dropzone@10.1.10/dist/index',
                 },
             });
             document.addEventListener('DOMContentLoaded', () => {

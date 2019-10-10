@@ -51,6 +51,15 @@ export interface LibraryBlockCreate {
     slug: string;
 }
 
+/**
+ * Data about a static asset file associated with an XBlock
+ */
+export interface LibraryXBlockAssetFile {
+    path: string;
+    url: string;
+    size: number;
+}
+
 
 /**
  * A simple API client for the Open edX content libraries API
@@ -143,6 +152,22 @@ class LibraryClient {
     /** Set the OLX source code of the given block */
     async setLibraryBlockOlx(id: string, newOlx: string): Promise<void> {
         await this._call(`/blocks/${id}/olx/`, {method: 'POST', data: {olx: newOlx}});
+    }
+
+    /** Get the static asset files of the given block */
+    async getLibraryBlockAssets(id: string): Promise<LibraryXBlockAssetFile[]> {
+        return (await this._call(`/blocks/${id}/assets/`)).files;
+    }
+
+    /** Add a static asset file to the given block */
+    async addLibraryBlockAsset(id: string, fileName: string, fileData: File): Promise<LibraryXBlockAssetFile> {
+        const requestData = new FormData();
+        requestData.set('content', fileData, fileName);
+        return (await this._call(`/blocks/${id}/assets/${fileName}`, {
+            method: 'PUT',
+            body: requestData,
+            headers: {/* Clear the Content-Type header so FormData can set it correctly */},
+        }));
     }
 }
 export const libClient = new LibraryClient();

@@ -4,6 +4,7 @@ import { NavLink, Switch, Route, withRouter, RouteComponentProps } from "react-r
 import {libClient, LibraryBlockMetadata} from './LibraryClient';
 import {LoadingStatus, LoadingWrapper} from './LoadingWrapper';
 import { Block, XBlockNotification, System } from "./Block/Block";
+import { BlockAssetsWrapper } from "./BlockAssets";
 import { BlockOlxWrapper } from "./BlockOlx";
 
 type RouteProps = RouteComponentProps<{libId: string, blockId: string}>;
@@ -49,7 +50,7 @@ class _BlockPage extends React.PureComponent<BlockPageProps> {
                             <Block usageKey={this.props.id} viewName="studio_view" onNotification={this.handleEditNotification} />
                         </Route>
                         <Route exact path={`${this.props.match.path}/assets`}>
-                            <p>Todo in the future: list all asset in this XBlock's bundle folder. Allow uploading, replacing, and deleting any in the `static` subfolder.</p>
+                            <BlockAssetsWrapper blockId={this.props.id} onBlockChanged={this.props.onBlockChanged} />
                         </Route>
                         <Route exact path={`${this.props.match.path}/source`}>
                             <BlockOlxWrapper blockId={this.props.id} onBlockChanged={this.props.onBlockChanged} />

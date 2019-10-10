@@ -126,6 +126,24 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
                 yield this._call(`/blocks/${id}/olx/`, { method: 'POST', data: { olx: newOlx } });
             });
         }
+        /** Get the static asset files of the given block */
+        getLibraryBlockAssets(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return (yield this._call(`/blocks/${id}/assets/`)).files;
+            });
+        }
+        /** Add a static asset file to the given block */
+        addLibraryBlockAsset(id, fileName, fileData) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const requestData = new FormData();
+                requestData.set('content', fileData, fileName);
+                return (yield this._call(`/blocks/${id}/assets/${fileName}`, {
+                    method: 'PUT',
+                    body: requestData,
+                    headers: { /* Clear the Content-Type header so FormData can set it correctly */},
+                }));
+            });
+        }
     }
     exports.libClient = new LibraryClient();
     /**
@@ -220,7 +238,81 @@ define("LoadingWrapper", ["require", "exports", "react"], function (require, exp
     }
     exports.LoadingWrapper = LoadingWrapper;
 });
-define("BlockOlx", ["require", "exports", "react", "LibraryClient", "LoadingWrapper"], function (require, exports, React, LibraryClient_1, LoadingWrapper_1) {
+define("BlockAssets", ["require", "exports", "react", "react", "react-dropzone", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_1, react_dropzone_1, LibraryClient_1, LoadingWrapper_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * Display the static assets associated with an XBlock
+     */
+    const BlockAssets = (props) => {
+        const onDrop = react_1.useCallback(props.onDropFiles, []);
+        const { getRootProps, getInputProps, isDragActive } = react_dropzone_1.useDropzone({ onDrop });
+        return React.createElement(React.Fragment, null,
+            React.createElement("p", null,
+                "There are ",
+                props.assetList.length,
+                " static asset files for this XBlock:"),
+            React.createElement("ul", null, props.assetList.map(assetFile => React.createElement("li", { key: assetFile.path },
+                React.createElement("a", { href: assetFile.url }, assetFile.path),
+                " (",
+                Math.round(assetFile.size / 1024.0),
+                " KB)"))),
+            React.createElement("div", Object.assign({}, getRootProps(), { style: { lineHeight: '150px', border: '3px solid #ddd', textAlign: 'center', backgroundColor: isDragActive ? '#90ee90' : '#fbfbfb', marginBottom: '1em', } }),
+                React.createElement("input", Object.assign({}, getInputProps())),
+                isDragActive ?
+                    React.createElement("span", null, "\u2795 Drop the files here ...") :
+                    React.createElement("span", null, "\u2795 Drag and drop some files here to upload them, or click to select files.")),
+            React.createElement("p", null,
+                "Tip: set the filenames carefully ",
+                React.createElement("em", null, "before"),
+                " uploading, as there is no rename tool!"));
+    };
+    class BlockAssetsWrapper extends React.PureComponent {
+        constructor(props) {
+            super(props);
+            /**
+             * Upload new files to the content library
+             */
+            this.uploadAssetFiles = (files) => __awaiter(this, void 0, void 0, function* () {
+                this.setState({ status: 0 /* Loading */ });
+                try {
+                    for (const file of files) {
+                        yield LibraryClient_1.libClient.addLibraryBlockAsset(this.props.blockId, file.name, file);
+                    }
+                    const assetList = yield LibraryClient_1.libClient.getLibraryBlockAssets(this.props.blockId);
+                    this.setState({ assetList, status: 1 /* Ready */ });
+                    this.props.onBlockChanged();
+                }
+                catch (err) {
+                    console.error(err);
+                    this.setState({ status: 2 /* Error */ });
+                }
+            });
+            this.state = {
+                assetList: [],
+                status: 0 /* Loading */,
+            };
+        }
+        componentDidMount() {
+            return __awaiter(this, void 0, void 0, function* () {
+                try {
+                    const files = yield LibraryClient_1.libClient.getLibraryBlockAssets(this.props.blockId);
+                    this.setState({ assetList: files, status: 1 /* Ready */ });
+                }
+                catch (err) {
+                    console.error(err);
+                    this.setState({ status: 2 /* Error */ });
+                }
+            });
+        }
+        render() {
+            return React.createElement(LoadingWrapper_1.LoadingWrapper, { status: this.state.status },
+                React.createElement(BlockAssets, { assetList: this.state.assetList, onDropFiles: this.uploadAssetFiles }));
+        }
+    }
+    exports.BlockAssetsWrapper = BlockAssetsWrapper;
+});
+define("BlockOlx", ["require", "exports", "react", "LibraryClient", "LoadingWrapper"], function (require, exports, React, LibraryClient_2, LoadingWrapper_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -266,7 +358,7 @@ define("BlockOlx", ["require", "exports", "react", "LibraryClient", "LoadingWrap
             this.applyNewOlx = (newOlx) => __awaiter(this, void 0, void 0, function* () {
                 this.setState({ status: 0 /* Loading */ });
                 try {
-                    yield LibraryClient_1.libClient.setLibraryBlockOlx(this.props.blockId, newOlx);
+                    yield LibraryClient_2.libClient.setLibraryBlockOlx(this.props.blockId, newOlx);
                     this.setState({ olx: newOlx, status: 1 /* Ready */ });
                     this.props.onBlockChanged();
                 }
@@ -283,7 +375,7 @@ define("BlockOlx", ["require", "exports", "react", "LibraryClient", "LoadingWrap
         componentDidMount() {
             return __awaiter(this, void 0, void 0, function* () {
                 try {
-                    const olx = yield LibraryClient_1.libClient.getLibraryBlockOlx(this.props.blockId);
+                    const olx = yield LibraryClient_2.libClient.getLibraryBlockOlx(this.props.blockId);
                     this.setState({ olx, status: 1 /* Ready */ });
                 }
                 catch (err) {
@@ -293,7 +385,7 @@ define("BlockOlx", ["require", "exports", "react", "LibraryClient", "LoadingWrap
             });
         }
         render() {
-            return React.createElement(LoadingWrapper_1.LoadingWrapper, { status: this.state.status },
+            return React.createElement(LoadingWrapper_2.LoadingWrapper, { status: this.state.status },
                 React.createElement(BlockOlx, { olx: this.state.olx, onUpdateOlx: this.applyNewOlx }));
         }
     }
@@ -657,7 +749,7 @@ define("Block/wrap", ["require", "exports"], function (require, exports) {
         window.addEventListener('resize', checkFrameHeight);
     }
 });
-define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingWrapper", "Block/wrap"], function (require, exports, React, LibraryClient_2, LoadingWrapper_2, wrap_1) {
+define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingWrapper", "Block/wrap"], function (require, exports, React, LibraryClient_3, LoadingWrapper_3, wrap_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // The xblock-bootstrap.html file must be hosted on a completely unique domain name.
@@ -740,7 +832,7 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
                     // First load the XBlock fragment data:
                     const data = yield this.xblockClient.renderView(this.props.usageKey, this.props.viewName);
                     const urlResources = data.resources.filter((r) => r.kind === 'url');
-                    const html = wrap_1.wrapBlockHtmlForIFrame(data.content, urlResources.filter((r) => r.mimetype === 'application/javascript').map((r) => r.data), urlResources.filter((r) => r.mimetype === 'text/css').map((r) => r.data), LibraryClient_2.LMS_BASE_URL);
+                    const html = wrap_1.wrapBlockHtmlForIFrame(data.content, urlResources.filter((r) => r.mimetype === 'application/javascript').map((r) => r.data), urlResources.filter((r) => r.mimetype === 'text/css').map((r) => r.data), LibraryClient_3.LMS_BASE_URL);
                     // Load the XBlock HTML into the IFrame:
                     this.setState({ initialHtml: html, loadingState: 1 /* Ready */ });
                 }
@@ -754,7 +846,7 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
             window.removeEventListener('message', this.receivedWindowMessage);
         }
         render() {
-            return React.createElement(LoadingWrapper_2.LoadingWrapper, { status: this.state.loadingState },
+            return React.createElement(LoadingWrapper_3.LoadingWrapper, { status: this.state.loadingState },
                 React.createElement("div", { style: {
                         height: `${this.state.iFrameHeight}px`,
                         boxSizing: 'content-box',
@@ -802,7 +894,7 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
             });
         }
         get xblockClient() {
-            return this.props.system === 1 /* Studio */ ? LibraryClient_2.studioXBlockClient : LibraryClient_2.lmsXBlockClient;
+            return this.props.system === 1 /* Studio */ ? LibraryClient_3.studioXBlockClient : LibraryClient_3.lmsXBlockClient;
         }
     }
     Block.defaultProps = {
@@ -811,7 +903,7 @@ define("Block/Block", ["require", "exports", "react", "LibraryClient", "LoadingW
     };
     exports.Block = Block;
 });
-define("BlockPage", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper", "Block/Block", "BlockOlx"], function (require, exports, React, react_router_dom_1, LibraryClient_3, LoadingWrapper_3, Block_1, BlockOlx_1) {
+define("BlockPage", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper", "Block/Block", "BlockAssets", "BlockOlx"], function (require, exports, React, react_router_dom_1, LibraryClient_4, LoadingWrapper_4, Block_1, BlockAssets_1, BlockOlx_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -839,7 +931,7 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
             };
             this.handleDeleteBlock = () => __awaiter(this, void 0, void 0, function* () {
                 if (confirm("Are you sure you want to delete this XBlock? There is no undo.")) {
-                    yield LibraryClient_3.libClient.deleteLibraryBlock(this.props.id);
+                    yield LibraryClient_4.libClient.deleteLibraryBlock(this.props.id);
                     // Leave this page:
                     this.props.history.push(`/lib/${this.props.match.params.libId}/`);
                     // And make sure the list of blocks in the library is refreshed:
@@ -872,7 +964,7 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.props.match.path}/edit` },
                                 React.createElement(Block_1.Block, { usageKey: this.props.id, viewName: "studio_view", onNotification: this.handleEditNotification })),
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.props.match.path}/assets` },
-                                React.createElement("p", null, "Todo in the future: list all asset in this XBlock's bundle folder. Allow uploading, replacing, and deleting any in the `static` subfolder.")),
+                                React.createElement(BlockAssets_1.BlockAssetsWrapper, { blockId: this.props.id, onBlockChanged: this.props.onBlockChanged })),
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.props.match.path}/source` },
                                 React.createElement(BlockOlx_1.BlockOlxWrapper, { blockId: this.props.id, onBlockChanged: this.props.onBlockChanged })),
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.props.match.path}/actions` },
@@ -897,7 +989,7 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
              */
             this.refreshBlockData = () => __awaiter(this, void 0, void 0, function* () {
                 try {
-                    const data = yield LibraryClient_3.libClient.getLibraryBlock(this.props.match.params.blockId);
+                    const data = yield LibraryClient_4.libClient.getLibraryBlock(this.props.match.params.blockId);
                     this.setState({ data, status: 1 /* Ready */ });
                 }
                 catch (err) {
@@ -919,13 +1011,13 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
             });
         }
         render() {
-            return React.createElement(LoadingWrapper_3.LoadingWrapper, { status: this.state.status },
+            return React.createElement(LoadingWrapper_4.LoadingWrapper, { status: this.state.status },
                 React.createElement(exports.BlockPage, Object.assign({}, this.state.data, { onBlockChanged: this.handleBlockChanged })));
         }
     }
     exports.BlockPageWrapper = react_router_dom_1.withRouter(_BlockPageWrapper);
 });
-define("LibraryBlocks", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_2, LibraryClient_4, LoadingWrapper_4) {
+define("LibraryBlocks", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_2, LibraryClient_5, LoadingWrapper_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class _LibraryBlocks extends React.PureComponent {
@@ -939,7 +1031,7 @@ define("LibraryBlocks", ["require", "exports", "react", "react-router-dom", "Lib
             };
             this.handleAddNewBlock = (event) => __awaiter(this, void 0, void 0, function* () {
                 event.preventDefault();
-                const data = yield LibraryClient_4.libClient.createLibraryBlock(this.props.libraryId, this.state.newBlockType, this.state.newBlockSlug);
+                const data = yield LibraryClient_5.libClient.createLibraryBlock(this.props.libraryId, this.state.newBlockType, this.state.newBlockSlug);
                 this.props.history.push(`/lib/${this.props.libraryId}/blocks/${data.id}`);
             });
             this.state = { newBlockType: 'html', newBlockSlug: '' };
@@ -983,7 +1075,7 @@ define("LibraryBlocks", ["require", "exports", "react", "react-router-dom", "Lib
             this.fetchLibraryData = () => __awaiter(this, void 0, void 0, function* () {
                 const libraryId = this.props.libraryId;
                 try {
-                    const blocks = yield LibraryClient_4.libClient.getLibraryBlocks(libraryId);
+                    const blocks = yield LibraryClient_5.libClient.getLibraryBlocks(libraryId);
                     this.setState({ blocks, status: 1 /* Ready */ });
                 }
                 catch (err) {
@@ -1004,18 +1096,18 @@ define("LibraryBlocks", ["require", "exports", "react", "react-router-dom", "Lib
             return __awaiter(this, void 0, void 0, function* () {
                 this.fetchLibraryData();
                 const libraryId = this.props.libraryId;
-                const blockTypes = yield LibraryClient_4.libClient.getLibraryBlockTypes(libraryId);
+                const blockTypes = yield LibraryClient_5.libClient.getLibraryBlockTypes(libraryId);
                 this.setState({ blockTypes: blockTypes });
             });
         }
         render() {
-            return React.createElement(LoadingWrapper_4.LoadingWrapper, { status: this.state.status },
+            return React.createElement(LoadingWrapper_5.LoadingWrapper, { status: this.state.status },
                 React.createElement(exports.LibraryBlocks, { libraryId: this.props.libraryId, blocks: this.state.blocks, newBlockTypes: this.state.blockTypes, onLibraryChanged: this.handleLibraryChanged }));
         }
     }
     exports.LibraryBlocksWrapper = LibraryBlocksWrapper;
 });
-define("Library", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper", "LibraryBlocks", "BlockPage"], function (require, exports, React, react_router_dom_3, LibraryClient_5, LoadingWrapper_5, LibraryBlocks_1, BlockPage_1) {
+define("Library", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper", "LibraryBlocks", "BlockPage"], function (require, exports, React, react_router_dom_3, LibraryClient_6, LoadingWrapper_6, LibraryBlocks_1, BlockPage_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class _Library extends React.PureComponent {
@@ -1023,13 +1115,13 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
             super(props);
             /** Publish/commit all pending changes to this content library */
             this.handlePublishChanges = () => __awaiter(this, void 0, void 0, function* () {
-                yield LibraryClient_5.libClient.commitLibraryChanges(this.props.id);
+                yield LibraryClient_6.libClient.commitLibraryChanges(this.props.id);
                 this.props.onLibraryChanged();
                 window.location.reload(); // Todo: Tell <LibraryBlocksWrapper> to refresh instead of reloading the page
             });
             /** Revert all pending changes to this content library */
             this.handleRevertChanges = () => __awaiter(this, void 0, void 0, function* () {
-                yield LibraryClient_5.libClient.revertLibraryChanges(this.props.id);
+                yield LibraryClient_6.libClient.revertLibraryChanges(this.props.id);
                 this.props.onLibraryChanged();
                 window.location.reload(); // Todo: Tell <LibraryBlocksWrapper> to refresh instead of reloading the page
             });
@@ -1079,7 +1171,7 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
             this.fetchLibraryData = () => __awaiter(this, void 0, void 0, function* () {
                 const libraryId = this.props.match.params.libId;
                 try {
-                    const data = yield LibraryClient_5.libClient.getLibrary(libraryId);
+                    const data = yield LibraryClient_6.libClient.getLibrary(libraryId);
                     this.setState({ data, status: 1 /* Ready */ });
                 }
                 catch (err) {
@@ -1095,13 +1187,13 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
             });
         }
         render() {
-            return React.createElement(LoadingWrapper_5.LoadingWrapper, { status: this.state.status },
+            return React.createElement(LoadingWrapper_6.LoadingWrapper, { status: this.state.status },
                 React.createElement(exports.Library, Object.assign({}, this.state.data, { onLibraryChanged: this.fetchLibraryData })));
         }
     }
     exports.LibraryWrapper = LibraryWrapper;
 });
-define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "LibraryClient"], function (require, exports, React, react_router_dom_4, LibraryClient_6) {
+define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "LibraryClient"], function (require, exports, React, react_router_dom_4, LibraryClient_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class LibraryAddForm extends React.PureComponent {
@@ -1115,7 +1207,7 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
             this.handleChangeCollectionUUID = (event) => { this.setState({ collection_uuid: event.target.value }); };
             this.handleSubmit = (event) => __awaiter(this, void 0, void 0, function* () {
                 event.preventDefault();
-                const newLibrary = yield LibraryClient_6.libClient.createLibrary(this.state);
+                const newLibrary = yield LibraryClient_7.libClient.createLibrary(this.state);
                 this.props.history.push(`/lib/${newLibrary.id}`);
             });
             this.state = {
@@ -1164,7 +1256,7 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
     }
     exports.LibraryAddForm = LibraryAddForm;
 });
-define("LibraryList", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_5, LibraryClient_7, LoadingWrapper_6) {
+define("LibraryList", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_5, LibraryClient_8, LoadingWrapper_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class _LibraryList extends React.PureComponent {
@@ -1176,7 +1268,7 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
             };
         }
         render() {
-            if (LibraryClient_7.IS_REMOTE_SERVER) {
+            if (LibraryClient_8.IS_REMOTE_SERVER) {
                 return React.createElement(React.Fragment, null,
                     React.createElement("h1", null, "Remote Content Libraries"),
                     React.createElement("p", null, "You cannot list the libraries on a remote server. Enter a library ID to access it:"),
@@ -1206,7 +1298,7 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
         componentDidMount() {
             return __awaiter(this, void 0, void 0, function* () {
                 try {
-                    const libraryList = yield LibraryClient_7.libClient.listLibraries();
+                    const libraryList = yield LibraryClient_8.libClient.listLibraries();
                     this.setState({
                         libraryList,
                         status: 1 /* Ready */,
@@ -1219,7 +1311,7 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
             });
         }
         render() {
-            return React.createElement(LoadingWrapper_6.LoadingWrapper, { status: this.state.status },
+            return React.createElement(LoadingWrapper_7.LoadingWrapper, { status: this.state.status },
                 React.createElement(exports.LibraryList, { libraries: this.state.libraryList }));
         }
     }
