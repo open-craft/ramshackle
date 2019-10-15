@@ -144,6 +144,12 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
                 }));
             });
         }
+        /** Delete a static asset file from the given block */
+        deleteLibraryBlockAsset(id, fileName) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return (yield this._call(`/blocks/${id}/assets/${fileName}`, { method: 'DELETE' }));
+            });
+        }
     }
     exports.libClient = new LibraryClient();
     /**
@@ -248,24 +254,31 @@ define("BlockAssets", ["require", "exports", "react", "react", "react-dropzone",
         const onDrop = react_1.useCallback(props.onDropFiles, []);
         const { getRootProps, getInputProps, isDragActive } = react_dropzone_1.useDropzone({ onDrop });
         return React.createElement(React.Fragment, null,
+            React.createElement("h1", { className: `float-right` },
+                "\uD83D\uDDC3",
+                React.createElement("span", { className: 'sr-only' }, "Static Assets")),
             React.createElement("p", null,
                 "There are ",
                 props.assetList.length,
                 " static asset files for this XBlock:"),
             React.createElement("ul", null, props.assetList.map(assetFile => React.createElement("li", { key: assetFile.path },
                 React.createElement("a", { href: assetFile.url }, assetFile.path),
-                " (",
+                " ",
+                ' ',
+                "(",
                 Math.round(assetFile.size / 1024.0),
-                " KB)"))),
+                " KB) (",
+                React.createElement("button", { onClick: () => props.onDeleteFile(assetFile.path), className: `btn btn-link p-0`, title: "Delete this file" }, "x"),
+                ")"))),
             React.createElement("div", Object.assign({}, getRootProps(), { style: { lineHeight: '150px', border: '3px solid #ddd', textAlign: 'center', backgroundColor: isDragActive ? '#90ee90' : '#fbfbfb', marginBottom: '1em', } }),
                 React.createElement("input", Object.assign({}, getInputProps())),
                 isDragActive ?
                     React.createElement("span", null, "\u2795 Drop the files here ...") :
-                    React.createElement("span", null, "\u2795 Drag and drop some files here to upload them, or click to select files.")),
+                    React.createElement("span", null, "\u2795 Drag and drop some files here to upload them, or click here to select files.")),
             React.createElement("p", null,
                 "Tip: set the filenames carefully ",
                 React.createElement("em", null, "before"),
-                " uploading, as there is no rename tool!"));
+                " uploading, as there is no rename tool."));
     };
     class BlockAssetsWrapper extends React.PureComponent {
         constructor(props) {
@@ -274,18 +287,24 @@ define("BlockAssets", ["require", "exports", "react", "react", "react-dropzone",
              * Upload new files to the content library
              */
             this.uploadAssetFiles = (files) => __awaiter(this, void 0, void 0, function* () {
-                this.setState({ status: 0 /* Loading */ });
-                try {
+                this.doThenRefresh((() => __awaiter(this, void 0, void 0, function* () {
                     for (const file of files) {
+                        // Upload each file to this block's static assets:
                         yield LibraryClient_1.libClient.addLibraryBlockAsset(this.props.blockId, file.name, file);
                     }
-                    const assetList = yield LibraryClient_1.libClient.getLibraryBlockAssets(this.props.blockId);
-                    this.setState({ assetList, status: 1 /* Ready */ });
-                    this.props.onBlockChanged();
-                }
-                catch (err) {
-                    console.error(err);
-                    this.setState({ status: 2 /* Error */ });
+                }))()
+                // The following parallelized implementation is faster but currently
+                // doesn't work due to a race condition in blockstore.
+                // // For each file in files:
+                // Promise.all(files.map(file =>
+                //     // Upload the file to this block's static assets:
+                //     libClient.addLibraryBlockAsset(this.props.blockId, file.name, file),
+                // ))
+                );
+            });
+            this.deleteAssetFile = (filePath) => __awaiter(this, void 0, void 0, function* () {
+                if (confirm(`Are you sure you want to delete ${filePath}?`)) {
+                    this.doThenRefresh(LibraryClient_1.libClient.deleteLibraryBlockAsset(this.props.blockId, filePath));
                 }
             });
             this.state = {
@@ -307,7 +326,25 @@ define("BlockAssets", ["require", "exports", "react", "react", "react-dropzone",
         }
         render() {
             return React.createElement(LoadingWrapper_1.LoadingWrapper, { status: this.state.status },
-                React.createElement(BlockAssets, { assetList: this.state.assetList, onDropFiles: this.uploadAssetFiles }));
+                React.createElement(BlockAssets, { assetList: this.state.assetList, onDropFiles: this.uploadAssetFiles, onDeleteFile: this.deleteAssetFile }));
+        }
+        /**
+         * Do something, then update the list of assets.
+         */
+        doThenRefresh(someThingToDo) {
+            return __awaiter(this, void 0, void 0, function* () {
+                this.setState({ status: 0 /* Loading */ });
+                try {
+                    yield someThingToDo;
+                    const assetList = yield LibraryClient_1.libClient.getLibraryBlockAssets(this.props.blockId);
+                    this.setState({ assetList, status: 1 /* Ready */ });
+                    this.props.onBlockChanged();
+                }
+                catch (err) {
+                    console.error(err);
+                    this.setState({ status: 2 /* Error */ });
+                }
+            });
         }
     }
     exports.BlockAssetsWrapper = BlockAssetsWrapper;

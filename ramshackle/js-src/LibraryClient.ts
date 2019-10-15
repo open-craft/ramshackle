@@ -169,6 +169,11 @@ class LibraryClient {
             headers: {/* Clear the Content-Type header so FormData can set it correctly */},
         }));
     }
+
+    /** Delete a static asset file from the given block */
+    async deleteLibraryBlockAsset(id: string, fileName: string): Promise<void> {
+        return (await this._call(`/blocks/${id}/assets/${fileName}`, {method: 'DELETE'}));
+    }
 }
 export const libClient = new LibraryClient();
 
