@@ -26,7 +26,7 @@ const BlockAssets: React.FunctionComponent<{
             {
                 props.assetList.map(assetFile =>
                     <li key={assetFile.path}>
-                        <a href={assetFile.url}>{assetFile.path}</a> {' '}
+                        <a href={assetFile.url}>/static/{assetFile.path}</a> {' '}
                         ({Math.round(assetFile.size / 1024.0)} KB)
                         (<button onClick={() => props.onDeleteFile(assetFile.path)} className={`btn btn-link p-0`} title="Delete this file">x</button>)
                     </li>
@@ -42,6 +42,7 @@ const BlockAssets: React.FunctionComponent<{
             }
         </div>
         <p>Tip: set the filenames carefully <em>before</em> uploading, as there is no rename tool.</p>
+        <p>Within OLX or when using the "Edit" tab, always reference assets using /static/filename, e.g. <code>&lt;img src="/static/jamie.jpg" alt="Picture of Jamie"/&gt;</code></p>
     </>;
 }
 

@@ -262,7 +262,9 @@ define("BlockAssets", ["require", "exports", "react", "react", "react-dropzone",
                 props.assetList.length,
                 " static asset files for this XBlock:"),
             React.createElement("ul", null, props.assetList.map(assetFile => React.createElement("li", { key: assetFile.path },
-                React.createElement("a", { href: assetFile.url }, assetFile.path),
+                React.createElement("a", { href: assetFile.url },
+                    "/static/",
+                    assetFile.path),
                 " ",
                 ' ',
                 "(",
@@ -278,7 +280,10 @@ define("BlockAssets", ["require", "exports", "react", "react", "react-dropzone",
             React.createElement("p", null,
                 "Tip: set the filenames carefully ",
                 React.createElement("em", null, "before"),
-                " uploading, as there is no rename tool."));
+                " uploading, as there is no rename tool."),
+            React.createElement("p", null,
+                "Within OLX or when using the \"Edit\" tab, always reference assets using /static/filename, e.g. ",
+                React.createElement("code", null, "<img src=\"/static/jamie.jpg\" alt=\"Picture of Jamie\"/>")));
     };
     class BlockAssetsWrapper extends React.PureComponent {
         constructor(props) {
