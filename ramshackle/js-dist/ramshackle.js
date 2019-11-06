@@ -1190,7 +1190,7 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
                         this.props.bundle_uuid),
                     React.createElement("p", null,
                         "(",
-                        React.createElement("a", { href: `http://localhost:18010/admin/content_libraries/contentlibrary/${this.props.slug}/change/` }, "Library Django admin"),
+                        React.createElement("a", { href: `http://localhost:18010/admin/content_libraries/contentlibrary/?slug=${this.props.slug}` }, "Library Django admin"),
                         ") (",
                         React.createElement("a", { href: `http://localhost:18250/admin/bundles/bundle/?uuid=${this.props.bundle_uuid}` }, "Bundle Django admin"),
                         ") (",
