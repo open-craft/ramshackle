@@ -59,6 +59,7 @@ class _BlockPage extends React.PureComponent<BlockPageProps> {
                             <section>
                                 <h1>Actions</h1>
                                 <button onClick={this.handleDeleteBlock} className="btn btn-outline-danger mb-2 mr-2">Delete this XBlock</button>
+                                <p>To view this block anonymously, open <a href={this.props.history.createHref({pathname:`/simple-block/${this.props.id}`})}>this link</a> in an incognito window.</p>
                             </section>
                         </Route>
                         <Route exact path={`${this.props.match.path}/learn`}>

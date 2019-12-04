@@ -1012,7 +1012,11 @@ define("BlockPage", ["require", "exports", "react", "react-router-dom", "Library
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.props.match.path}/actions` },
                                 React.createElement("section", null,
                                     React.createElement("h1", null, "Actions"),
-                                    React.createElement("button", { onClick: this.handleDeleteBlock, className: "btn btn-outline-danger mb-2 mr-2" }, "Delete this XBlock"))),
+                                    React.createElement("button", { onClick: this.handleDeleteBlock, className: "btn btn-outline-danger mb-2 mr-2" }, "Delete this XBlock"),
+                                    React.createElement("p", null,
+                                        "To view this block anonymously, open ",
+                                        React.createElement("a", { href: this.props.history.createHref({ pathname: `/simple-block/${this.props.id}` }) }, "this link"),
+                                        " in an incognito window."))),
                             React.createElement(react_router_dom_1.Route, { exact: true, path: `${this.props.match.path}/learn` },
                                 React.createElement("p", null, "This tab uses the LMS APIs so it shows the published version only and will save user state."),
                                 React.createElement(Block_1.Block, { usageKey: this.props.id, system: 0 /* LMS */ })),
@@ -1359,7 +1363,25 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
     }
     exports.LibraryListWrapper = LibraryListWrapper;
 });
-define("ramshackle", ["require", "exports", "react", "react-dom", "react-router-dom", "Library", "LibraryAdd", "LibraryList"], function (require, exports, React, ReactDOM, react_router_dom_6, Library_1, LibraryAdd_1, LibraryList_1) {
+define("SimpleBlockPage", ["require", "exports", "react", "Block/Block"], function (require, exports, React, Block_2) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * A simple page that _just_ shows an XBlock that can be interacted with.
+     * This only uses the XBlock API and no content library APIs.
+     * The main use case is for opening this in an incognito window (it does
+     * not require any authentication) to test anonymous usage of XBlocks.
+     */
+    class SimpleBlockPage extends React.PureComponent {
+        render() {
+            return React.createElement(React.Fragment, null,
+                React.createElement("p", null, "This simple block page supports both anonymous and registered user views of an XBlock, unlike the rest of Ramshackle which only works for registered users."),
+                React.createElement(Block_2.Block, { usageKey: this.props.match.params.id, system: 0 /* LMS */ }));
+        }
+    }
+    exports.SimpleBlockPage = SimpleBlockPage;
+});
+define("ramshackle", ["require", "exports", "react", "react-dom", "react-router-dom", "Library", "LibraryAdd", "LibraryList", "SimpleBlockPage"], function (require, exports, React, ReactDOM, react_router_dom_6, Library_1, LibraryAdd_1, LibraryList_1, SimpleBlockPage_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class Ramshackle extends React.Component {
@@ -1369,6 +1391,7 @@ define("ramshackle", ["require", "exports", "react", "react-dom", "react-router-
                     React.createElement(react_router_dom_6.Route, { path: "/", exact: true, component: LibraryList_1.LibraryListWrapper }),
                     React.createElement(react_router_dom_6.Route, { path: "/add/", exact: true, component: LibraryAdd_1.LibraryAddForm }),
                     React.createElement(react_router_dom_6.Route, { path: "/lib/:libId/", component: Library_1.LibraryWrapper }),
+                    React.createElement(react_router_dom_6.Route, { path: "/simple-block/:id/", component: SimpleBlockPage_1.SimpleBlockPage }),
                     React.createElement(react_router_dom_6.Route, { component: () => (React.createElement("p", null, "Not found.")) })),
                 React.createElement("footer", { style: { marginTop: "1em", borderTop: "1px solid #ddd" } },
                     React.createElement(react_router_dom_6.Link, { to: "/" }, "All libraries"))));
