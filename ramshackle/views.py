@@ -37,5 +37,6 @@ class RamshackleSpaView(EdxFragmentView):
         }
         html = render_to_string('ramshackle.html', context)
         fragment = Fragment(html)
-        fragment.add_javascript(pkg_resources.resource_string('ramshackle', 'js-dist/ramshackle.js'))
+        js_str = pkg_resources.resource_string('ramshackle', 'js-dist/ramshackle.js').decode('utf-8')
+        fragment.add_javascript(js_str)
         return fragment
