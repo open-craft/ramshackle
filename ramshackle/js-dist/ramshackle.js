@@ -461,6 +461,7 @@ define("Block/wrap", ["require", "exports"], function (require, exports) {
         //
         // Otherwise, if the XBlock uses 'student_view', 'author_view', or 'studio_view', include known required globals:
         if (html.indexOf('xblock-v1-student_view') !== -1 ||
+            html.indexOf('xblock-v1-public_view') !== -1 ||
             html.indexOf('xblock-v1-studio_view') !== -1 ||
             html.indexOf('xblock-v1-author_view') !== -1) {
             legacyIncludes += `
@@ -1376,7 +1377,7 @@ define("SimpleBlockPage", ["require", "exports", "react", "Block/Block"], functi
         render() {
             return React.createElement(React.Fragment, null,
                 React.createElement("p", null, "This simple block page supports both anonymous and registered user views of an XBlock, unlike the rest of Ramshackle which only works for registered users."),
-                React.createElement(Block_2.Block, { usageKey: this.props.match.params.id, system: 0 /* LMS */ }));
+                React.createElement(Block_2.Block, { usageKey: this.props.match.params.id, viewName: window.userIsAnonymous ? 'public_view' : 'student_view', system: 0 /* LMS */ }));
         }
     }
     exports.SimpleBlockPage = SimpleBlockPage;

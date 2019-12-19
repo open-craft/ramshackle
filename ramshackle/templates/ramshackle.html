@@ -19,4 +19,5 @@
         // so we just require() it to initialize and run it:
         myRequire(['ramshackle'], () => {});
     })();
+    window.userIsAnonymous = {% if user_is_anonymous %}true{% else %}false{% endif %};
 </script>

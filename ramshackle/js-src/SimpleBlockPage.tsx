@@ -14,7 +14,11 @@ export class SimpleBlockPage extends React.PureComponent<RouteComponentProps<{id
     render() {
         return <>
             <p>This simple block page supports both anonymous and registered user views of an XBlock, unlike the rest of Ramshackle which only works for registered users.</p>
-            <Block usageKey={this.props.match.params.id} system={System.LMS} />
+            <Block
+                usageKey={this.props.match.params.id}
+                viewName={(window as any).userIsAnonymous ? 'public_view' : 'student_view'}
+                system={System.LMS}
+            />
         </>
     }
 

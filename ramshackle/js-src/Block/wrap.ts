@@ -26,6 +26,7 @@ export function wrapBlockHtmlForIFrame(html: string, jsUrls: string[], cssUrls: 
     // Otherwise, if the XBlock uses 'student_view', 'author_view', or 'studio_view', include known required globals:
     if (
         html.indexOf('xblock-v1-student_view') !== -1 ||
+        html.indexOf('xblock-v1-public_view') !== -1 ||
         html.indexOf('xblock-v1-studio_view' ) !== -1 ||
         html.indexOf('xblock-v1-author_view' ) !== -1
     ) {

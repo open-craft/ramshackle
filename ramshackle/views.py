@@ -34,6 +34,7 @@ class RamshackleSpaView(EdxFragmentView):
         Render the Ramshackle single page app.
         """
         context = {
+            'user_is_anonymous': request.user.is_anonymous,
         }
         html = render_to_string('ramshackle.html', context)
         fragment = Fragment(html)
