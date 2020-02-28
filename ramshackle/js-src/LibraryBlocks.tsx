@@ -106,6 +106,12 @@ export class LibraryBlocksWrapper extends React.PureComponent<
         const blockTypes = await libClient.getLibraryBlockTypes(libraryId);
         this.setState({blockTypes: blockTypes});
     }
+    public componentDidUpdate(prevProps) {
+        if (this.props.libraryId !== prevProps.libraryId) {
+            this.setState({status: LoadingStatus.Loading});
+            this.fetchLibraryData();
+        }
+    }
 
     fetchLibraryData = async () => {
         const libraryId = this.props.libraryId;

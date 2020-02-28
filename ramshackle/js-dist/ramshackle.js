@@ -90,6 +90,33 @@ define("LibraryClient", ["require", "exports"], function (require, exports) {
                 return this._call(`/${id}/blocks/`);
             });
         }
+        getLibraryLinks(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return this._call(`/${id}/links/`);
+            });
+        }
+        /** Modify the library 'libraryId' to include a new link to the specified library */
+        createLibraryLink(libraryId, linkId, targetLibId, version) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return this._call(`/${libraryId}/links/`, { method: 'POST', data: {
+                        id: linkId,
+                        opaque_key: targetLibId,
+                        version,
+                    } });
+            });
+        }
+        /** Change the version of an existing library link. Set version=null to use latest version. */
+        updateLibraryLink(libraryId, linkId, version) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return this._call(`/${libraryId}/links/${linkId}/`, { method: 'PATCH', data: { version } });
+            });
+        }
+        /** Delete a link from the specified library. */
+        deleteLibraryLink(libraryId, linkId) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return this._call(`/${libraryId}/links/${linkId}/`, { method: 'DELETE' });
+            });
+        }
         /** Get the list of block types that can be added to the given library */
         getLibraryBlockTypes(id) {
             return __awaiter(this, void 0, void 0, function* () {
@@ -1147,6 +1174,12 @@ define("LibraryBlocks", ["require", "exports", "react", "react-router-dom", "Lib
                 this.setState({ blockTypes: blockTypes });
             });
         }
+        componentDidUpdate(prevProps) {
+            if (this.props.libraryId !== prevProps.libraryId) {
+                this.setState({ status: 0 /* Loading */ });
+                this.fetchLibraryData();
+            }
+        }
         render() {
             return React.createElement(LoadingWrapper_5.LoadingWrapper, { status: this.state.status },
                 React.createElement(exports.LibraryBlocks, { libraryId: this.props.libraryId, blocks: this.state.blocks, newBlockTypes: this.state.blockTypes, onLibraryChanged: this.handleLibraryChanged }));
@@ -1154,7 +1187,123 @@ define("LibraryBlocks", ["require", "exports", "react", "react-router-dom", "Lib
     }
     exports.LibraryBlocksWrapper = LibraryBlocksWrapper;
 });
-define("Library", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper", "LibraryBlocks", "BlockPage"], function (require, exports, React, react_router_dom_3, LibraryClient_6, LoadingWrapper_6, LibraryBlocks_1, BlockPage_1) {
+define("LibraryLinks", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_3, LibraryClient_6, LoadingWrapper_6) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    class LibraryLinks extends React.PureComponent {
+        constructor(props) {
+            super(props);
+            this.newLinkIdChanged = (event) => {
+                this.setState({ newLinkId: event.target.value });
+            };
+            this.newLinkTargetChanged = (event) => {
+                this.setState({ newLinkTarget: event.target.value });
+            };
+            this.createNewLink = () => {
+                this.props.onCreateLink(this.state.newLinkId, this.state.newLinkTarget);
+                this.setState({ newLinkId: '', newLinkTarget: '' });
+            };
+            this.state = { newLinkId: '', newLinkTarget: '', clickedDeleteOnLink: '' };
+        }
+        render() {
+            return React.createElement(React.Fragment, null,
+                React.createElement("h2", null, "Library Links"),
+                React.createElement("ul", null,
+                    this.props.links.map((link) => {
+                        let desc = `Bundle ${link.bundle_uuid}`;
+                        if (link.opaque_key && link.opaque_key.startsWith('lib:')) {
+                            desc = React.createElement(react_router_dom_3.NavLink, { to: `/lib/${link.opaque_key}` }, link.opaque_key);
+                        }
+                        return React.createElement("li", { key: link.id },
+                            React.createElement("strong", null, link.id),
+                            ":",
+                            ' ',
+                            desc,
+                            " (version ",
+                            link.version,
+                            ")",
+                            link.latest_version > link.version ?
+                                React.createElement("button", { className: 'btn btn-small btn-link', onClick: () => { this.props.onUpdateLink(link.id); } },
+                                    "Update to latest version (",
+                                    link.latest_version,
+                                    ")")
+                                : null,
+                            link.id === this.state.clickedDeleteOnLink ?
+                                React.createElement(React.Fragment, null,
+                                    "Are you sure? ",
+                                    ' ',
+                                    React.createElement("button", { className: 'btn btn-sm btn-danger', onClick: () => { this.props.onUpdateLink(link.id); } }, "Delete"),
+                                    React.createElement("button", { className: 'btn btn-sm btn-link', onClick: () => {
+                                            this.setState({ clickedDeleteOnLink: '' });
+                                        } }, "Cancel"))
+                                :
+                                    React.createElement("button", { className: 'btn btn-sm btn-link', onClick: () => {
+                                            this.setState({ clickedDeleteOnLink: link.id });
+                                        } }, "Delete"));
+                    }),
+                    React.createElement("li", null,
+                        "Add a new link to library: ",
+                        ' ',
+                        React.createElement("input", { type: 'text', placeholder: 'link_id', size: 10, value: this.state.newLinkId, onChange: this.newLinkIdChanged }),
+                        React.createElement("input", { type: 'text', placeholder: this.props.libraryId, value: this.state.newLinkTarget, onChange: this.newLinkTargetChanged }),
+                        React.createElement("button", { className: 'btn btn-sm btn-primary', disabled: !this.state.newLinkId || !this.state.newLinkTarget, onClick: this.createNewLink }, "Add"))));
+        }
+    }
+    exports.LibraryLinks = LibraryLinks;
+    class LibraryLinksWrapper extends React.PureComponent {
+        constructor(props) {
+            super(props);
+            this.fetchLibraryLinks = () => __awaiter(this, void 0, void 0, function* () {
+                const libraryId = this.props.libraryId;
+                try {
+                    const links = yield LibraryClient_6.libClient.getLibraryLinks(libraryId);
+                    links.sort((a, b) => a.id.localeCompare(b.id)); // Sort by ID
+                    this.setState({ links, status: 1 /* Ready */ });
+                }
+                catch (err) {
+                    console.error(err);
+                    this.setState({ status: 2 /* Error */ });
+                }
+            });
+            this.onUpdateLink = (linkId) => __awaiter(this, void 0, void 0, function* () {
+                yield LibraryClient_6.libClient.updateLibraryLink(this.props.libraryId, linkId, null);
+                this.fetchLibraryLinks();
+                this.props.onLibraryChanged();
+            });
+            this.onDeleteLink = (linkId) => __awaiter(this, void 0, void 0, function* () {
+                yield LibraryClient_6.libClient.deleteLibraryLink(this.props.libraryId, linkId);
+                this.fetchLibraryLinks();
+                this.props.onLibraryChanged();
+            });
+            this.onCreateLink = (linkId, libKey) => __awaiter(this, void 0, void 0, function* () {
+                yield LibraryClient_6.libClient.createLibraryLink(this.props.libraryId, linkId, libKey, null);
+                this.fetchLibraryLinks();
+                this.props.onLibraryChanged();
+            });
+            this.state = {
+                links: [],
+                status: 0 /* Loading */,
+            };
+        }
+        componentDidMount() {
+            return __awaiter(this, void 0, void 0, function* () {
+                this.fetchLibraryLinks();
+            });
+        }
+        componentDidUpdate(prevProps) {
+            if (this.props.libraryId !== prevProps.libraryId) {
+                this.setState({ status: 0 /* Loading */ });
+                this.fetchLibraryLinks();
+            }
+        }
+        render() {
+            return React.createElement(LoadingWrapper_6.LoadingWrapper, { status: this.state.status },
+                React.createElement(LibraryLinks, { libraryId: this.props.libraryId, links: this.state.links, onUpdateLink: this.onUpdateLink, onDeleteLink: this.onDeleteLink, onCreateLink: this.onCreateLink }));
+        }
+    }
+    exports.LibraryLinksWrapper = LibraryLinksWrapper;
+});
+define("Library", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper", "LibraryBlocks", "LibraryLinks", "BlockPage"], function (require, exports, React, react_router_dom_4, LibraryClient_7, LoadingWrapper_7, LibraryBlocks_1, LibraryLinks_1, BlockPage_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class _Library extends React.PureComponent {
@@ -1162,27 +1311,27 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
             super(props);
             /** Publish/commit all pending changes to this content library */
             this.handlePublishChanges = () => __awaiter(this, void 0, void 0, function* () {
-                yield LibraryClient_6.libClient.commitLibraryChanges(this.props.id);
+                yield LibraryClient_7.libClient.commitLibraryChanges(this.props.id);
                 this.props.onLibraryChanged();
                 window.location.reload(); // Todo: Tell <LibraryBlocksWrapper> to refresh instead of reloading the page
             });
             /** Revert all pending changes to this content library */
             this.handleRevertChanges = () => __awaiter(this, void 0, void 0, function* () {
-                yield LibraryClient_6.libClient.revertLibraryChanges(this.props.id);
+                yield LibraryClient_7.libClient.revertLibraryChanges(this.props.id);
                 this.props.onLibraryChanged();
                 window.location.reload(); // Todo: Tell <LibraryBlocksWrapper> to refresh instead of reloading the page
             });
             this.state = { newBlockType: 'html', newBlockSlug: '' };
         }
         render() {
-            return React.createElement(react_router_dom_3.Switch, null,
-                React.createElement(react_router_dom_3.Route, { path: `${this.props.match.path}blocks/:blockId` },
+            return React.createElement(react_router_dom_4.Switch, null,
+                React.createElement(react_router_dom_4.Route, { path: `${this.props.match.path}blocks/:blockId` },
                     React.createElement("h1", null, this.props.title),
-                    React.createElement(react_router_dom_3.Link, { to: this.props.match.url }, "Back to Library"),
+                    React.createElement(react_router_dom_4.Link, { to: this.props.match.url }, "Back to Library"),
                     React.createElement("br", null),
                     React.createElement("br", null),
                     React.createElement(BlockPage_1.BlockPageWrapper, { onBlockChanged: this.props.onLibraryChanged })),
-                React.createElement(react_router_dom_3.Route, { exact: true, path: this.props.match.path },
+                React.createElement(react_router_dom_4.Route, { exact: true, path: this.props.match.path },
                     React.createElement("h1", null, this.props.title),
                     React.createElement("p", null,
                         "Version: ",
@@ -1206,19 +1355,21 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
                         this.props.has_unpublished_deletes ? React.createElement("p", null, "Has unpublished changes, including deleted XBlocks.") : React.createElement("p", null, "Has unpublished changes."),
                         React.createElement("button", { onClick: this.handlePublishChanges, className: "btn btn-success mb-2 mr-2" }, "Publish Changes"),
                         React.createElement("button", { onClick: this.handleRevertChanges, className: "btn btn-outline-danger mb-2 mr-2" }, "Discard Changes")) : React.createElement("p", null, "No unpublished changes."),
-                    React.createElement(LibraryBlocks_1.LibraryBlocksWrapper, { libraryId: this.props.id, onLibraryChanged: this.props.onLibraryChanged })),
-                React.createElement(react_router_dom_3.Route, null, "Not found."));
+                    React.createElement(LibraryBlocks_1.LibraryBlocksWrapper, { libraryId: this.props.id, onLibraryChanged: this.props.onLibraryChanged }),
+                    React.createElement("br", null),
+                    React.createElement(LibraryLinks_1.LibraryLinksWrapper, { libraryId: this.props.id, onLibraryChanged: this.props.onLibraryChanged })),
+                React.createElement(react_router_dom_4.Route, null, "Not found."));
         }
     }
     exports._Library = _Library;
-    exports.Library = react_router_dom_3.withRouter(_Library);
+    exports.Library = react_router_dom_4.withRouter(_Library);
     class LibraryWrapper extends React.PureComponent {
         constructor(props) {
             super(props);
             this.fetchLibraryData = () => __awaiter(this, void 0, void 0, function* () {
                 const libraryId = this.props.match.params.libId;
                 try {
-                    const data = yield LibraryClient_6.libClient.getLibrary(libraryId);
+                    const data = yield LibraryClient_7.libClient.getLibrary(libraryId);
                     this.setState({ data, status: 1 /* Ready */ });
                 }
                 catch (err) {
@@ -1233,14 +1384,20 @@ define("Library", ["require", "exports", "react", "react-router-dom", "LibraryCl
                 this.fetchLibraryData();
             });
         }
+        componentDidUpdate(prevProps) {
+            if (this.props.match.params.libId !== prevProps.match.params.libId) {
+                this.setState({ status: 0 /* Loading */ });
+                this.fetchLibraryData();
+            }
+        }
         render() {
-            return React.createElement(LoadingWrapper_6.LoadingWrapper, { status: this.state.status },
+            return React.createElement(LoadingWrapper_7.LoadingWrapper, { status: this.state.status },
                 React.createElement(exports.Library, Object.assign({}, this.state.data, { onLibraryChanged: this.fetchLibraryData })));
         }
     }
     exports.LibraryWrapper = LibraryWrapper;
 });
-define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "LibraryClient"], function (require, exports, React, react_router_dom_4, LibraryClient_7) {
+define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "LibraryClient"], function (require, exports, React, react_router_dom_5, LibraryClient_8) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class LibraryAddForm extends React.PureComponent {
@@ -1254,7 +1411,7 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
             this.handleChangeCollectionUUID = (event) => { this.setState({ collection_uuid: event.target.value }); };
             this.handleSubmit = (event) => __awaiter(this, void 0, void 0, function* () {
                 event.preventDefault();
-                const newLibrary = yield LibraryClient_7.libClient.createLibrary(this.state);
+                const newLibrary = yield LibraryClient_8.libClient.createLibrary(this.state);
                 this.props.history.push(`/lib/${newLibrary.id}`);
             });
             this.state = {
@@ -1295,7 +1452,7 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
                             React.createElement("a", { href: "http://localhost:18250/api/v1/collections" }, "via the Blockstore API"),
                             ".")),
                     React.createElement("button", { type: "submit", disabled: !this.canSubmit, className: "btn btn-primary", onClick: this.handleSubmit }, "Submit"),
-                    React.createElement(react_router_dom_4.Link, { to: "/", className: "btn btn-secondary" }, "Cancel")));
+                    React.createElement(react_router_dom_5.Link, { to: "/", className: "btn btn-secondary" }, "Cancel")));
         }
         get canSubmit() {
             return this.state.slug && this.state.collection_uuid;
@@ -1303,7 +1460,7 @@ define("LibraryAdd", ["require", "exports", "react", "react-router-dom", "Librar
     }
     exports.LibraryAddForm = LibraryAddForm;
 });
-define("LibraryList", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_5, LibraryClient_8, LoadingWrapper_7) {
+define("LibraryList", ["require", "exports", "react", "react-router-dom", "LibraryClient", "LoadingWrapper"], function (require, exports, React, react_router_dom_6, LibraryClient_9, LoadingWrapper_8) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class _LibraryList extends React.PureComponent {
@@ -1315,7 +1472,7 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
             };
         }
         render() {
-            if (LibraryClient_8.IS_REMOTE_SERVER) {
+            if (LibraryClient_9.IS_REMOTE_SERVER) {
                 return React.createElement(React.Fragment, null,
                     React.createElement("h1", null, "Remote Content Libraries"),
                     React.createElement("p", null, "You cannot list the libraries on a remote server. Enter a library ID to access it:"),
@@ -1329,11 +1486,11 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
                     this.props.libraries.length,
                     " content libraries:"),
                 React.createElement("ul", null, this.props.libraries.map(lib => (React.createElement("li", { key: lib.id },
-                    React.createElement(react_router_dom_5.Link, { to: `/lib/${lib.id}` }, lib.title))))),
-                React.createElement(react_router_dom_5.Link, { to: "/add/", className: "btn btn-primary" }, "Add New Library"));
+                    React.createElement(react_router_dom_6.Link, { to: `/lib/${lib.id}` }, lib.title))))),
+                React.createElement(react_router_dom_6.Link, { to: "/add/", className: "btn btn-primary" }, "Add New Library"));
         }
     }
-    exports.LibraryList = react_router_dom_5.withRouter(_LibraryList);
+    exports.LibraryList = react_router_dom_6.withRouter(_LibraryList);
     class LibraryListWrapper extends React.PureComponent {
         constructor(props) {
             super(props);
@@ -1345,7 +1502,7 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
         componentDidMount() {
             return __awaiter(this, void 0, void 0, function* () {
                 try {
-                    const libraryList = yield LibraryClient_8.libClient.listLibraries();
+                    const libraryList = yield LibraryClient_9.libClient.listLibraries();
                     this.setState({
                         libraryList,
                         status: 1 /* Ready */,
@@ -1358,7 +1515,7 @@ define("LibraryList", ["require", "exports", "react", "react-router-dom", "Libra
             });
         }
         render() {
-            return React.createElement(LoadingWrapper_7.LoadingWrapper, { status: this.state.status },
+            return React.createElement(LoadingWrapper_8.LoadingWrapper, { status: this.state.status },
                 React.createElement(exports.LibraryList, { libraries: this.state.libraryList }));
         }
     }
@@ -1382,20 +1539,20 @@ define("SimpleBlockPage", ["require", "exports", "react", "Block/Block"], functi
     }
     exports.SimpleBlockPage = SimpleBlockPage;
 });
-define("ramshackle", ["require", "exports", "react", "react-dom", "react-router-dom", "Library", "LibraryAdd", "LibraryList", "SimpleBlockPage"], function (require, exports, React, ReactDOM, react_router_dom_6, Library_1, LibraryAdd_1, LibraryList_1, SimpleBlockPage_1) {
+define("ramshackle", ["require", "exports", "react", "react-dom", "react-router-dom", "Library", "LibraryAdd", "LibraryList", "SimpleBlockPage"], function (require, exports, React, ReactDOM, react_router_dom_7, Library_1, LibraryAdd_1, LibraryList_1, SimpleBlockPage_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class Ramshackle extends React.Component {
         render() {
-            return (React.createElement(react_router_dom_6.BrowserRouter, { basename: "/ramshackle/" },
-                React.createElement(react_router_dom_6.Switch, null,
-                    React.createElement(react_router_dom_6.Route, { path: "/", exact: true, component: LibraryList_1.LibraryListWrapper }),
-                    React.createElement(react_router_dom_6.Route, { path: "/add/", exact: true, component: LibraryAdd_1.LibraryAddForm }),
-                    React.createElement(react_router_dom_6.Route, { path: "/lib/:libId/", component: Library_1.LibraryWrapper }),
-                    React.createElement(react_router_dom_6.Route, { path: "/simple-block/:id/", component: SimpleBlockPage_1.SimpleBlockPage }),
-                    React.createElement(react_router_dom_6.Route, { component: () => (React.createElement("p", null, "Not found.")) })),
+            return (React.createElement(react_router_dom_7.BrowserRouter, { basename: "/ramshackle/" },
+                React.createElement(react_router_dom_7.Switch, null,
+                    React.createElement(react_router_dom_7.Route, { path: "/", exact: true, component: LibraryList_1.LibraryListWrapper }),
+                    React.createElement(react_router_dom_7.Route, { path: "/add/", exact: true, component: LibraryAdd_1.LibraryAddForm }),
+                    React.createElement(react_router_dom_7.Route, { path: "/lib/:libId/", component: Library_1.LibraryWrapper }),
+                    React.createElement(react_router_dom_7.Route, { path: "/simple-block/:id/", component: SimpleBlockPage_1.SimpleBlockPage }),
+                    React.createElement(react_router_dom_7.Route, { component: () => (React.createElement("p", null, "Not found.")) })),
                 React.createElement("footer", { style: { marginTop: "1em", borderTop: "1px solid #ddd" } },
-                    React.createElement(react_router_dom_6.Link, { to: "/" }, "All libraries"))));
+                    React.createElement(react_router_dom_7.Link, { to: "/" }, "All libraries"))));
         }
     }
     ReactDOM.render(React.createElement(Ramshackle, null), document.getElementById("ramshackle-root"));

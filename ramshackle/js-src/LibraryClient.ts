@@ -44,6 +44,17 @@ export interface LibraryXBlockType {
 }
 
 /**
+ * Data about a link to another blockstore bundle (which may be a content library)
+ */
+export interface LibraryBundleLink {
+    id: string;
+    bundle_uuid: string;
+    version: number;
+    latest_version: number;
+    opaque_key: string; // May be empty string
+}
+
+/**
  * Data required to create an XBlock in a content library
  */
 export interface LibraryBlockCreate {
@@ -122,6 +133,29 @@ class LibraryClient {
 
     async getLibraryBlocks(id: string): Promise<LibraryBlockMetadata[]> {
         return this._call(`/${id}/blocks/`);
+    }
+
+    async getLibraryLinks(id: string): Promise<LibraryBundleLink[]> {
+        return this._call(`/${id}/links/`);
+    }
+
+    /** Modify the library 'libraryId' to include a new link to the specified library */
+    async createLibraryLink(libraryId: string, linkId: string, targetLibId: string, version: number|null): Promise<void> {
+        return this._call(`/${libraryId}/links/`, {method: 'POST', data: {
+            id: linkId,
+            opaque_key: targetLibId,
+            version,
+        }});
+    }
+
+    /** Change the version of an existing library link. Set version=null to use latest version. */
+    async updateLibraryLink(libraryId: string, linkId: string, version: number|null): Promise<void> {
+        return this._call(`/${libraryId}/links/${linkId}/`, {method: 'PATCH', data: {version}});
+    }
+
+    /** Delete a link from the specified library. */
+    async deleteLibraryLink(libraryId: string, linkId: string): Promise<void> {
+        return this._call(`/${libraryId}/links/${linkId}/`, {method: 'DELETE'});
     }
 
     /** Get the list of block types that can be added to the given library */

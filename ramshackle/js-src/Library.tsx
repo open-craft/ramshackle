@@ -4,6 +4,7 @@ import { withRouter, Switch, Route, Link, RouteComponentProps } from "react-rout
 import {libClient, LibraryMetadata} from './LibraryClient';
 import {LoadingStatus, LoadingWrapper} from './LoadingWrapper';
 import { LibraryBlocksWrapper } from "./LibraryBlocks";
+import { LibraryLinksWrapper } from "./LibraryLinks";
 import { BlockPageWrapper } from "./BlockPage";
 
 interface LibraryProps extends LibraryMetadata, RouteComponentProps<{libId: string}> {
@@ -41,6 +42,8 @@ export class _Library extends React.PureComponent<LibraryProps> {
                     </> : <p>No unpublished changes.</p>
                 }
                 <LibraryBlocksWrapper libraryId={this.props.id} onLibraryChanged={this.props.onLibraryChanged}/>
+                <br />
+                <LibraryLinksWrapper libraryId={this.props.id} onLibraryChanged={this.props.onLibraryChanged} />
             </Route>
             <Route>
                 Not found.
@@ -76,6 +79,13 @@ export class LibraryWrapper extends React.PureComponent<
     
     async componentDidMount() {
         this.fetchLibraryData();
+    }
+
+    public componentDidUpdate(prevProps) {
+        if (this.props.match.params.libId !== prevProps.match.params.libId) {
+            this.setState({status: LoadingStatus.Loading});
+            this.fetchLibraryData();
+        }
     }
 
     fetchLibraryData = async () => {
