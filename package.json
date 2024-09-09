@@ -6,7 +6,7 @@
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
     "react-dropzone": "^10.1.10",
-    "react-router-dom": "^5.0.1",
+    "react-router-dom": "^6.26.2",
     "typescript": "^3.5.2"
   }
 }
